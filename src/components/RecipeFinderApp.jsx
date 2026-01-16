@@ -194,7 +194,7 @@ export default function RecipeFinderApp() {
                 <ChefHat className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-800">AI Recipe Finder</h1>
+                <h1 className="text-3xl font-bold text-gray-800">AI Recipe Finder- Made the change</h1>
                 <p className="text-gray-600">Powered by OpenAI GPT - Get detailed recipes instantly</p>
               </div>
             </div>
