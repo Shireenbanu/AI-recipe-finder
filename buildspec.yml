@@ -28,7 +28,7 @@ phases:
       - echo Writing image definitions file...
       # your ECS container name
       - DOCKER_CONTAINER_NAME=ai-recipe-finder-container
-      - printf '[{"name":"%s","imageUri":"%s"}]' $DOCKER_CONTAINER_NAME $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
+      - printf '[{"name":"ai-recipe-finder-container","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
       - echo Container name is $DOCKER_CONTAINER_NAME
       - echo Printing imagedefinitions.json
       - cat imagedefinitions.json
