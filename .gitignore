@@ -16,8 +16,10 @@ dist-ssr
 !.vscode/extensions.json
 .idea
 .DS_Store
+.terraform*
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+terraform.*
