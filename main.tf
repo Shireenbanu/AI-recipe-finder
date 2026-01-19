@@ -52,7 +52,7 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
-  profile = "shireen-commandline-access"
+  profile = "shireens-terminal"
   default_tags {
     tags = {
       Project     = var.project_name
@@ -255,6 +255,7 @@ resource "aws_flow_log" "main" {
 resource "aws_cloudwatch_log_group" "vpc_flow_log" {
   name              = "/aws/vpc/${var.project_name}-${var.environment}"
   retention_in_days = 30
+
   
   tags = {
     Name = "${var.project_name}-${var.environment}-vpc-flow-log"
@@ -294,7 +295,11 @@ resource "aws_iam_role_policy" "vpc_flow_log" {
           "logs:DescribeLogStreams"
         ]
         Effect   = "Allow"
-        Resource = "*"
+        # Scope to specific log group instead of "*"
+        Resource = [
+          aws_cloudwatch_log_group.vpc_flow_log.arn,
+          "${aws_cloudwatch_log_group.vpc_flow_log.arn}:*"
+        ]
       }
     ]
   })
@@ -916,7 +921,131 @@ resource "aws_appautoscaling_policy" "ecs_memory" {
 }
 
 
+# Create CodeStar connection to GitHub
+resource "aws_codestarconnections_connection" "github" {
+  name          = "github-connection"
+  provider_type = "GitHub"
+}
 
+# IAM Role for CodeBuild
+resource "aws_iam_role" "codebuild_role" {
+  name = "${var.project_name}-codebuild-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "codebuild.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+# IAM Policy for CodeBuild
+resource "aws_iam_role_policy" "codebuild_policy" {
+  name = "${var.project_name}-codebuild-policy"
+  role = aws_iam_role.codebuild_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      # CloudWatch Logs permissions
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = ["*"]
+      },
+      # ECR permissions (for pushing Docker images)
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:InitiateLayerUpload",
+          "ecr:UploadLayerPart",
+          "ecr:CompleteLayerUpload",
+          "ecr:PutImage"
+        ]
+        Resource = ["*"]
+      },
+      # CodeStar connection permissions
+      {
+        Effect = "Allow"
+        Action = [
+          "codestar-connections:UseConnection",
+          "codeconnections:UseConnection"
+        ]
+        Resource = aws_codestarconnections_connection.github.arn
+      },
+      # Get ECR repository info
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:DescribeRepositories",
+          "ecr:ListImages"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# CodeBuild Project - Using GitHub with your existing buildspec
+resource "aws_codebuild_project" "recipe_finder_build" {
+  name          = "recipe-finder-build"
+  description   = "Build Recipe Finder Docker image"
+  service_role  = aws_iam_role.codebuild_role.arn
+  build_timeout = 10
+
+  artifacts {
+    type = "NO_ARTIFACTS"
+  }
+
+  cache {
+    type = "NO_CACHE"
+  }
+
+  environment {
+    compute_type                = "BUILD_GENERAL1_SMALL"
+    image                       = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    type                        = "LINUX_CONTAINER"
+    privileged_mode             = true  # REQUIRED for Docker builds
+    image_pull_credentials_type = "CODEBUILD"
+
+    
+  }
+
+  # Connect to GitHub - It will use the buildspec file from your repo
+  source {
+    type            = "GITHUB"
+    location        = "https://github.com/Shireenbanu/AI-recipe-finder.git"
+    git_clone_depth = 1
+    
+    git_submodules_config {
+      fetch_submodules = false
+    }
+    
+    # IMPORTANT: Leave this empty to use buildspec.yml from your repo
+    # If your buildspec has a different name/path, specify it here
+    # buildspec = "buildspec.yml"  # or "path/to/buildspec.yml"
+  }
+
+  logs_config {
+    cloudwatch_logs {
+      group_name  = "/aws/codebuild/recipe-finder"
+      stream_name = "build"
+    }
+  }
+}
 
 # ----------------------------------------
 # Outputs
