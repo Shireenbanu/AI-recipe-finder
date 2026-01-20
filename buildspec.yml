@@ -9,22 +9,22 @@ phases:
       - echo "✓ ECR login successful"
       - echo "AWS Region env: $AWS_REGION"
       - echo "AWS Default Region env: $AWS_DEFAULT_REGION"
+      
       - echo "2. FORCING Oregon (us-west-2) region..."
       - export AWS_DEFAULT_REGION=us-west-2
       - export AWS_REGION=us-west-2
       - echo "AWS Region env after change: $AWS_REGION"
       - echo "AWS Default Region env after change: $AWS_DEFAULT_REGION"
- 
       
-      - echo "2. Setting repository URI..."
+      - echo "3. Setting repository URI..."
       - REPOSITORY_URI=045615334997.dkr.ecr.us-west-2.amazonaws.com/recipe-finder-prod
       - echo "Repository: $REPOSITORY_URI"
       
-      - echo "3. Getting commit hash..."
+      - echo "4. Getting commit hash..."
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - echo "Commit hash: $COMMIT_HASH"
       
-      - echo "4. Setting image tag..."
+      - echo "5. Setting image tag..."
       - IMAGE_TAG=${COMMIT_HASH:=latest}
       - echo "Image tag: $IMAGE_TAG"
       
