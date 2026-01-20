@@ -1055,9 +1055,7 @@ resource "aws_codebuild_project" "recipe_finder_build" {
       fetch_submodules = false
     }
     
-    # IMPORTANT: Leave this empty to use buildspec.yml from your repo
-    # If your buildspec has a different name/path, specify it here
-    # buildspec = "buildspec.yml"  # or "path/to/buildspec.yml"
+
   }
 
   logs_config {
