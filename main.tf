@@ -1068,22 +1068,22 @@ resource "aws_codebuild_project" "recipe_finder_build" {
   }
 }
 
-resource "aws_codebuild_webhook" "recipe_finder_webhook" {
-  project_name = aws_codebuild_project.recipe_finder_build.name
-  build_type   = "BUILD"
+# resource "aws_codebuild_webhook" "recipe_finder_webhook" {
+#   project_name = aws_codebuild_project.recipe_finder_build.name
+#   build_type   = "BUILD"
 
-  filter_group {
-    filter {
-      type    = "EVENT"
-      pattern = "PUSH"
-    }
+#   filter_group {
+#     filter {
+#       type    = "EVENT"
+#       pattern = "PUSH"
+#     }
 
-    filter {
-      type    = "HEAD_REF"
-      pattern = "^refs/heads/main$"
-    }
-  }
-}
+#     filter {
+#       type    = "HEAD_REF"
+#       pattern = "^refs/heads/main$"
+#     }
+#   }
+# }
 # ----------------------------------------
 # Outputs
 # ----------------------------------------
