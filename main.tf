@@ -982,14 +982,29 @@ resource "aws_iam_role_policy" "codebuild_policy" {
         ]
         Resource = ["*"]
       },
+     {
+        Effect = "Allow"
+        Action = [
+          "codebuild:CreateWebhook",
+          "codebuild:DeleteWebhook",
+          "codebuild:UpdateWebhook",
+          "codebuild:ListWebhooks"
+        ]
+        Resource = [
+          "arn:aws:codebuild:us-west-2:045615334997:project/recipe-finder-build"
+        ]
+      },
       # CodeStar connection permissions
       {
         Effect = "Allow"
         Action = [
           "codestar-connections:UseConnection",
-          "codeconnections:UseConnection"
+          "codestar-connections:GetConnection",
+          "codestar-connections:ListConnections",
+          "codestar-connections:PassConnection",
+        
         ]
-        Resource = aws_codestarconnections_connection.github.arn
+        Resource =  "arn:aws:codestar-connections:us-west-2:045615334997:connection/*"
       },
       # Get ECR repository info
       {
