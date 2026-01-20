@@ -1068,6 +1068,7 @@ resource "aws_codebuild_project" "recipe_finder_build" {
   }
 }
 
+# This I beleive is not needed, it still be able to work without this
 # resource "aws_codebuild_webhook" "recipe_finder_webhook" {
 #   project_name = aws_codebuild_project.recipe_finder_build.name
 #   build_type   = "BUILD"
