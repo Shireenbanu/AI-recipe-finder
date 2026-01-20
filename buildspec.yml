@@ -3,30 +3,68 @@ version: 0.2
 phases:
   pre_build:
     commands:
-      - echo Logging in to Amazon ECR...
-      - aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 045615334997.dkr.ecr.us-east-2.amazonaws.com
-      - REPOSITORY_URI=045615334997.dkr.ecr.us-east-2.amazonaws.com/ai-reciepe-finder-docker-snaps
+      - echo "=== PRE-BUILD PHASE STARTED ==="
+      - echo "1. Logging in to Amazon ECR..."
+      - aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 045615334997.dkr.ecr.us-west-2.amazonaws.com
+      - echo "✓ ECR login successful"
+      - echo "AWS Region env: $AWS_REGION"
+      - echo "AWS Default Region env: $AWS_DEFAULT_REGION"
+      - echo "2. FORCING Oregon (us-west-2) region..."
+      - export AWS_DEFAULT_REGION=us-west-2
+      - export AWS_REGION=us-west-2
+      - echo "AWS Region env after change: $AWS_REGION"
+      - echo "AWS Default Region env after change: $AWS_DEFAULT_REGION"
+ 
+      
+      - echo "2. Setting repository URI..."
+      - REPOSITORY_URI=045615334997.dkr.ecr.us-west-2.amazonaws.com/recipe-finder-prod
+      - echo "Repository: $REPOSITORY_URI"
+      
+      - echo "3. Getting commit hash..."
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - echo "Commit hash: $COMMIT_HASH"
+      
+      - echo "4. Setting image tag..."
       - IMAGE_TAG=${COMMIT_HASH:=latest}
-      - echo Repository URI is $REPOSITORY_URI
-      - echo Image tag is $IMAGE_TAG
+      - echo "Image tag: $IMAGE_TAG"
+      
+      - echo "=== PRE-BUILD COMPLETE ==="
       
   build:
     commands:
-      - echo Build started on `date`
-      - echo Building the Docker image...
+      - echo "=== BUILD PHASE STARTED ==="
+      - echo "Start time: $(date)"
+      - echo "Building Docker image..."
       - docker build -t $REPOSITORY_URI:latest .
+      - echo "✓ Docker build completed"
+      
+      - echo "Tagging image..."
       - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
+      - echo "✓ Image tagged as: $REPOSITORY_URI:$IMAGE_TAG"
+      - echo "=== BUILD PHASE COMPLETE ==="
       
   post_build:
     commands:
-      - echo Build completed on `date`
-      - echo Pushing the Docker images...
+      - echo "=== POST-BUILD PHASE STARTED ==="
+      - echo "Start time: $(date)"
+      - echo "Pushing images to ECR..."
+      
+      - echo "Pushing :latest tag..."
       - docker push $REPOSITORY_URI:latest
+      - echo "✓ :latest pushed"
+      
+      - echo "Pushing :$IMAGE_TAG tag..."
       - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - echo Writing image definitions file...
-      - printf '[{"name":"ai-recipe-finder-container","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
+      - echo "✓ :$IMAGE_TAG pushed"
+      
+      - echo "Creating imagedefinitions.json..."
+      - printf '[{"name":"recipe-finder-container","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
+      - echo "File content:"
       - cat imagedefinitions.json
+      
+      - echo "=== POST-BUILD COMPLETE ==="
+      - echo "End time: $(date)"
+      - echo "✓ ALL DONE!"
 
 artifacts:
   files:
