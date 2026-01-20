@@ -1034,6 +1034,7 @@ resource "aws_codebuild_project" "recipe_finder_build" {
     type            = "GITHUB"
     location        = "https://github.com/Shireenbanu/AI-recipe-finder.git"
     git_clone_depth = 1
+    buildspec = "buildspec.yml"
     
     git_submodules_config {
       fetch_submodules = false
@@ -1052,6 +1053,22 @@ resource "aws_codebuild_project" "recipe_finder_build" {
   }
 }
 
+resource "aws_codebuild_webhook" "recipe_finder_webhook" {
+  project_name = aws_codebuild_project.recipe_finder_build.name
+  build_type   = "BUILD"
+
+  filter_group {
+    filter {
+      type    = "EVENT"
+      pattern = "PUSH"
+    }
+
+    filter {
+      type    = "HEAD_REF"
+      pattern = "^refs/heads/main$"
+    }
+  }
+}
 # ----------------------------------------
 # Outputs
 # ----------------------------------------
@@ -1093,4 +1110,14 @@ output "availability_zones" {
 output "internet_gateway_id" {
   description = "Internet Gateway ID"
   value       = aws_internet_gateway.main.id
+}
+
+output "codebuild_project_name" {
+  description = "CodeBuild project name"
+  value       = aws_codebuild_project.recipe_finder_build.name
+}
+
+output "codestar_connection_arn" {
+  description = "CodeStar Connection ARN - Activate this in AWS Console"
+  value       = aws_codestarconnections_connection.github.arn
 }
