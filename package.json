@@ -24,6 +24,7 @@
   },
   "homepage": "https://github.com/Shireenbanu/AI-recipe-finder#readme",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
