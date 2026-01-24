@@ -51,17 +51,16 @@ export async function getRecommendations(req, res) {
           recipes.push(savedRecipe);
 
           // Generate and log recommendation reasoning
-          const reasoning = await LLMService.generateRecommendationReasoning(
-            savedRecipe,
-            conditions,
-            nutritionalNeeds
-          );
+        //   const reasoning = await LLMService.generateRecommendationReasoning(
+        //     savedRecipe,
+        //     conditions,
+        //     nutritionalNeeds
+        //   );
 
           await Recipe.logRecommendation(
             userId,
             savedRecipe.id,
             conditions.map(c => c.name),
-            reasoning
           );
         } catch (error) {
           console.error('Error saving recipe:', error);
@@ -70,17 +69,11 @@ export async function getRecommendations(req, res) {
     } else {
       // Log existing recipe recommendations
       for (const recipe of recipes.slice(0, 5)) {
-        const reasoning = await LLMService.generateRecommendationReasoning(
-          recipe,
-          conditions,
-          nutritionalNeeds
-        );
 
         await Recipe.logRecommendation(
           userId,
           recipe.id,
           conditions.map(c => c.name),
-          reasoning
         );
       }
     }

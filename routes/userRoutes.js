@@ -7,6 +7,7 @@ const router = express.Router();
 router.post('/', userController.createUser);
 router.get('/:userId', userController.getUserProfile);
 router.put('/:userId', userController.updateUserProfile);
+router.get('/email/:email', userController.getUserByEmail)
 
 // Medical conditions
 router.get('/:userId/conditions', userController.getUserConditions);

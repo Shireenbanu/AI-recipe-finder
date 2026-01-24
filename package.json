@@ -24,14 +24,19 @@
   },
   "homepage": "https://github.com/Shireenbanu/AI-recipe-finder#readme",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.974.0",
+    "@aws-sdk/s3-request-presigner": "^3.974.0",
     "@google/generative-ai": "^0.24.1",
+    "aws-sdk": "^2.1693.0",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "express-validator": "^7.3.1",
     "helmet": "^8.1.0",
-    "pg": "^8.17.2"
+    "multer": "^2.0.2",
+    "pg": "^8.17.2",
+    "winston": "^3.19.0"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

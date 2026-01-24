@@ -39,6 +39,31 @@ export async function createUser(req, res) {
   }
 }
 
+export async function getUserByEmail(req, res){
+  try {
+    const { email } = req.params;
+    const user = await User.getUserByEmail(email);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      user
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to find user'
+    });
+  }
+};
+
+
 // Get user profile
 export async function getUserProfile(req, res) {
   try {

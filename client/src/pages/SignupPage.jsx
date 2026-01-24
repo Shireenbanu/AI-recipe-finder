@@ -1,6 +1,9 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 function SignupPage() {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     name: '',
     email: ''
@@ -26,6 +29,7 @@ function SignupPage() {
         // Store user ID in localStorage
         localStorage.setItem('userId', data.user.id);
         alert('Account created! User ID: ' + data.user.id);
+        navigate('/dashboard');
         // TODO: Navigate to next page
       } else {
         setError(data.error);

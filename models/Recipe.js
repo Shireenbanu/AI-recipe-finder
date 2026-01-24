@@ -166,10 +166,10 @@ export async function isFavorited(userId, recipeId) {
 }
 
 // Log recipe recommendation
-export async function logRecommendation(userId, recipeId, matchedConditions, llmReasoning) {
+export async function logRecommendation(userId, recipeId, matchedConditions) {
   const query = `
-    INSERT INTO recipe_recommendations (user_id, recipe_id, matched_conditions, llm_reasoning)
-    VALUES ($1, $2, $3, $4)
+    INSERT INTO recipe_recommendations (user_id, recipe_id, matched_conditions)
+    VALUES ($1, $2, $3)
     RETURNING *
   `;
 
@@ -177,7 +177,6 @@ export async function logRecommendation(userId, recipeId, matchedConditions, llm
     userId,
     recipeId,
     JSON.stringify(matchedConditions),
-    llmReasoning
   ]);
 
   return result.rows[0];

@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fileRoutes from './routes/fileRoutes.js';
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/recipes', recipeRoutes);
 // app.use('/api/chat', chatRoutes);
 app.use('/api/medical-conditions', medicalConditionRoutes);
+app.use('/api/upload-lab-report', fileRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

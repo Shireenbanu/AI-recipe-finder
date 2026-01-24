@@ -50,6 +50,24 @@ export async function updateUser(userId, updates) {
   return result.rows[0];
 }
 
+// Update user profile lab file name
+export async function saveFileNameForFutureUse(fileUrl, userId) {
+  // reportData should be an object like { fileName: '...', url: '...' }
+  
+  const query = `  
+    UPDATE users 
+    SET lab_reports = COALESCE(lab_reports, '[]'::jsonb) || $1::jsonb 
+    WHERE id = $2
+    RETURNING *
+  `;
+  
+    // We wrap reportData in an array [ ] before stringifying 
+    // This tells Postgres to APPEND to the existing array
+    const result = await pool.query(query, [JSON.stringify([fileUrl]), userId]);
+    return result.rows[0];
+  
+}
+
 // Delete user
 export async function deleteUser(userId) {
   const query = `

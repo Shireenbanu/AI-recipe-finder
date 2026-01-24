@@ -1,10 +1,16 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+
+async function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Use gemini-2.0-flash for speed/cost or gemini-2.0-pro for complex reasoning
 const model = genAI.getGenerativeModel({
-  model: "gemini-2.5-flash-lite",
+  model: "gemini-2.5-flash",
   generationConfig: {
     responseMimeType: "application/json",
   }
@@ -123,46 +129,33 @@ ${recipeContext.instructions ? recipeContext.instructions.map((step, i) => `${i 
 Answer their cooking questions clearly and concisely. Be supportive and give practical tips. If they ask about substitutions, timing, or techniques, provide helpful guidance.`
   });
 
-  try {
-    // Convert message array to Gemini format (role: 'user'/'model')
-    const history = messages.slice(0, -1).map(m => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }]
-    }));
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const history = messages.slice(0, -1).map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }]
+      }));
 
-    const chat = chatModel.startChat({ history });
-    const lastMessage = messages[messages.length - 1].content;
-    const result = await chat.sendMessage(lastMessage);
+      const chat = chatModel.startChat({ history });
+      const lastMessage = messages[messages.length - 1].content;
+      const result = await chat.sendMessage(lastMessage);
 
-    return {
-      role: 'assistant',
-      content: result.response.text()
-    };
-  } catch (error) {
-    console.error('Gemini Assistance Error:', error);
-    throw new Error('Failed to get cooking assistance');
+      return {
+        role: 'assistant',
+        content: result.response.text()
+      };
+    } catch (error) {
+      console.error(`Gemini Assistance Error (attempt ${attempt + 1}):`, error);
+      
+      if (error.status === 429 && attempt < 2) {
+        console.log('Rate limited, waiting 5 seconds...');
+        await sleep(5000);
+        continue;
+      }
+      
+      throw new Error('Failed to get cooking assistance. Please try again in a moment.');
+    }
   }
 }
 
-export async function generateRecommendationReasoning(recipe, conditions, nutritionalNeeds) {
-  const conditionNames = conditions.map(c => c.name).join(', ');
-  const prompt = `In 2-3 sentences, explain why "${recipe.title}" is beneficial for someone with ${conditionNames}. 
 
-Recipe nutrients: ${JSON.stringify(recipe.nutritional_info)}
-Required nutrients: ${JSON.stringify(nutritionalNeeds)}
-
-Be specific about which nutrients in the recipe address their health needs. Keep it brief and encouraging.`;
-
-  try {
-    // Use a separate model instance for plain text
-    const textModel = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash-lite"
-    });
-    
-    const result = await textModel.generateContent(prompt);
-    return result.response.text();
-  } catch (error) {
-    console.error('Gemini Reasoning Error:', error);
-    return `This ${recipe.title} recipe matches your nutritional requirements and supports your health goals.`;
-  }
-}
