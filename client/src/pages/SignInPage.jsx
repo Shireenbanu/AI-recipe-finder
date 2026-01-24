@@ -1,29 +1,43 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { signIn, getCurrentUser } from 'aws-amplify/auth';
 
 function SignInPage() {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleSignIn = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
 
     try {
-      // Simple lookup by email
+      // Sign in with Cognito
+      await signIn({
+        username: email,
+        password: password
+      });
+
+      // Get current user info
+      const currentUser = await getCurrentUser();
+      
+      // Fetch user from our database
       const response = await fetch(`/api/users/email/${email}`);
       const data = await response.json();
 
       if (data.success) {
         localStorage.setItem('userId', data.user.id);
         localStorage.setItem('userName', data.user.name);
+        localStorage.setItem('userEmail', data.user.email);
         navigate('/dashboard');
       } else {
-        alert('User not found. Please sign up first.');
+        setError('User not found in database');
       }
-    } catch (error) {
-      alert(`Sign in failed ${error}`);
+    } catch (err) {
+      setError(err.message || 'Sign in failed');
     } finally {
       setLoading(false);
     }
@@ -34,6 +48,12 @@ function SignInPage() {
       <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-6">Sign In</h1>
         
+        {error && (
+          <div className="bg-red-50 text-red-600 p-3 rounded mb-4">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSignIn}>
           <div className="mb-4">
             <label className="block text-gray-700 mb-2">Email</label>
@@ -47,10 +67,22 @@ function SignInPage() {
             />
           </div>
 
+          <div className="mb-6">
+            <label className="block text-gray-700 mb-2">Password</label>
+            <input
+              type="password"
+              required
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+            />
+          </div>
+
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 mb-4"
+            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 mb-4"
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>

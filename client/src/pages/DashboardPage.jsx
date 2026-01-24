@@ -1,10 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { signOut } from 'aws-amplify/auth';
+
 
 function DashboardPage() {
   const navigate = useNavigate();
   const [userName, setUserName] = useState('');
   const userId = localStorage.getItem('userId');
+
 
   useEffect(() => {
     if (!userId) {
@@ -13,9 +16,14 @@ function DashboardPage() {
     setUserName(localStorage.getItem('userName') || 'User');
   }, [userId, navigate]);
 
-  const handleSignOut = () => {
-    localStorage.clear();
-    navigate('/signin');
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      localStorage.clear();
+      navigate('/signin');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
   return (
