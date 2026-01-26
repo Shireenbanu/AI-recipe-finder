@@ -1,5 +1,5 @@
 # Build stage
-FROM public.ecr.aws/nginx/nginx:alpine
+FROM public.ecr.aws/nginx/nginx:alpine as builder
 
 WORKDIR /app
 
