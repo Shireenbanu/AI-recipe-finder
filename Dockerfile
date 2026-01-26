@@ -1,31 +1,39 @@
-# Build stage - Using AWS Mirror for Node
+# 1. Build Stage (React)
 FROM public.ecr.aws/docker/library/node:18-alpine AS builder
-
 WORKDIR /app
 
-# Copy package files
+# Copy dependency files
 COPY package*.json ./
+COPY client/package*.json ./client/
 
-# Install dependencies
+# Install dependencies for both backend and frontend
 RUN npm install
+RUN npm run client:install
 
-# Copy source code
+# Copy source and build React
+COPY . .
+RUN npm run client:build
+
+# 2. Production Stage (Node.js)
+FROM public.ecr.aws/docker/library/node:18-alpine
+WORKDIR /app
+
+# Set environment to production
+ENV NODE_ENV=production
+
+# Copy only the files needed to run the server
+COPY package*.json ./
+# Install only production dependencies (no devDependencies)
+RUN npm install --omit=dev
+
+# Copy the server source code
 COPY . .
 
-# Build the app
-RUN npm run build
+# Copy the built React assets from the builder stage 
+# This matches your server.js logic: path.join(__dirname, 'client/dist')
+COPY --from=builder /app/client/dist ./client/dist
 
-# Production stage - Using AWS Mirror for Nginx
-FROM public.ecr.aws/nginx/nginx:alpine
+EXPOSE 3000
 
-# Copy built assets from builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Expose port 80
-EXPOSE 80
-
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Start the Express server
+CMD ["node", "server.js"]
