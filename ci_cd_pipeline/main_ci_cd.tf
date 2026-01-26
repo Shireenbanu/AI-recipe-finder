@@ -95,6 +95,23 @@ resource "aws_security_group" "ec2_sg" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
+    description = "Jenkins UI"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+   ingress {
+    description = "SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+
+  ingress {
     description = "HTTPS from anywhere"
     from_port   = 443
     to_port     = 443
@@ -139,30 +156,84 @@ data "aws_ami" "amazon_linux_2023" {
   }
 }
 
-# EC2 Instance
+# IAM Role for Jenkins EC2
+resource "aws_iam_role" "jenkins_role" {
+  name = "${var.project_name}-jenkins-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name = "${var.project_name}-jenkins-role"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "ssm_attach" {
+  role       = aws_iam_role.jenkins_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+# IAM Policy for Jenkins (ECR, ECS, CodeDeploy access)
+resource "aws_iam_role_policy" "jenkins_policy" {
+  name = "${var.project_name}-jenkins-policy"
+  role = aws_iam_role.jenkins_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:*",
+          "ecs:*",
+          "ec2:*",
+          "codedeploy:*",
+          "s3:*",
+          "logs:*"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Instance Profile
+resource "aws_iam_instance_profile" "jenkins_profile" {
+  name = "${var.project_name}-jenkins-profile"
+  role = aws_iam_role.jenkins_role.name
+}
+
+
+
+# EC2 Instance with Jenkins
 resource "aws_instance" "app_server" {
   ami                    = data.aws_ami.amazon_linux_2023.id
   instance_type          = var.instance_type
   subnet_id              = aws_subnet.public_subnet.id
   vpc_security_group_ids = [aws_security_group.ec2_sg.id]
-
+  iam_instance_profile   = aws_iam_instance_profile.jenkins_profile.name
+  key_name      = "key-pair-for-ec2-recipe-finder"
   root_block_device {
     volume_size           = 30
     volume_type           = "gp3"
     encrypted             = true
     delete_on_termination = true
   }
-
-  user_data = <<-EOF
-              #!/bin/bash
-              yum update -y
-              yum install -y docker git
-              systemctl start docker
-              systemctl enable docker
-              EOF
+ 
+  user_data = file("${path.module}/scripts/jenkins-install.sh")
 
   tags = {
-    Name = "${var.project_name}-app-server"
+    Name = "${var.project_name}-jenkins-server"
   }
 }
 

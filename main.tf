@@ -2,7 +2,6 @@
 # VPC Infrastructure for Recipe Finder
 # Region: us-west-2
 # ========================================
-
 # ----------------------------------------
 # Variables
 # ----------------------------------------
@@ -36,6 +35,12 @@ variable "availability_zones" {
   default     = ["us-west-2a", "us-west-2b"]
 }
 
+variable "domain_name" {
+  description = "The generic domain you bought (e.g., shireenbanu.me)"
+  type        = string
+  default     = "shireenlabs.me"
+}
+
 # ----------------------------------------
 # Provider Configuration
 # ----------------------------------------
@@ -51,7 +56,7 @@ terraform {
 }
 
 provider "aws" {
-  region = var.aws_region
+  region  = var.aws_region
   profile = "shireens-terminal"
   default_tags {
     tags = {
@@ -294,8 +299,7 @@ resource "aws_iam_role_policy" "vpc_flow_log" {
           "logs:DescribeLogGroups",
           "logs:DescribeLogStreams"
         ]
-        Effect   = "Allow"
-        # Scope to specific log group instead of "*"
+        Effect = "Allow"
         Resource = [
           aws_cloudwatch_log_group.vpc_flow_log.arn,
           "${aws_cloudwatch_log_group.vpc_flow_log.arn}:*"
@@ -306,9 +310,67 @@ resource "aws_iam_role_policy" "vpc_flow_log" {
 }
 
 # ========================================
+# ROUTE 53 & SSL CERTIFICATE (ACM)
+# ========================================
+# ----------------------------------------
+# Route 53 Hosted Zone
+# ----------------------------------------
+resource "aws_route53_zone" "main" {
+  name = var.domain_name
+  
+  tags = {
+    Name = "${var.project_name}-${var.environment}-zone"
+  }
+}
+
+# ----------------------------------------
+# ACM Certificate for SSL/TLS
+# ----------------------------------------
+resource "aws_acm_certificate" "cert" {
+  domain_name       = var.domain_name
+  validation_method = "DNS"
+  subject_alternative_names = ["*.${var.domain_name}"]
+  
+  lifecycle {
+    create_before_destroy = true
+  }
+  
+  tags = {
+    Name = "${var.project_name}-${var.environment}-cert"
+  }
+}
+
+# ----------------------------------------
+# Route 53 Records for Certificate Validation
+# ----------------------------------------
+resource "aws_route53_record" "cert_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.cert.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+  
+  allow_overwrite = true
+  name            = each.value.name
+  records         = [each.value.record]
+  ttl             = 60
+  type            = each.value.type
+  zone_id         = aws_route53_zone.main.zone_id
+}
+
+# ----------------------------------------
+# ACM Certificate Validation
+# ----------------------------------------
+resource "aws_acm_certificate_validation" "cert" {
+  certificate_arn         = aws_acm_certificate.cert.arn
+  validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
+}
+
+# ========================================
 # ECS CLUSTER AND FARGATE CONFIGURATION
 # ========================================
-
 # ----------------------------------------
 # ECS Variables
 # ----------------------------------------
@@ -357,13 +419,13 @@ variable "max_capacity" {
 variable "docker_image" {
   description = "Docker image URL (will be set by CI/CD pipeline)"
   type        = string
-  default     = "" # Empty - will be populated by CodePipeline later
+  default     = ""
 }
 
 variable "create_ecs_service" {
   description = "Set to true when ready to deploy via CI/CD pipeline"
   type        = bool
-  default     = false # Don't create service yet - wait for CI/CD
+  default     = false
 }
 
 # ----------------------------------------
@@ -490,7 +552,6 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# Additional policy for Secrets Manager and SSM Parameter Store
 resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
   name = "${var.project_name}-${var.environment}-ecs-secrets-policy"
   role = aws_iam_role.ecs_task_execution_role.id
@@ -535,7 +596,6 @@ resource "aws_iam_role" "ecs_task_role" {
   }
 }
 
-# Application permissions (S3, DynamoDB, etc.)
 resource "aws_iam_role_policy" "ecs_task_role_policy" {
   name = "${var.project_name}-${var.environment}-ecs-task-policy"
   role = aws_iam_role.ecs_task_role.id
@@ -651,8 +711,8 @@ resource "aws_lb" "main" {
   security_groups    = [aws_security_group.alb.id]
   subnets            = aws_subnet.public[*].id
   
-  enable_deletion_protection = false
-  enable_http2              = true
+  enable_deletion_protection       = false
+  enable_http2                     = true
   enable_cross_zone_load_balancing = true
   
   tags = {
@@ -689,47 +749,32 @@ resource "aws_lb_target_group" "app" {
 }
 
 # ----------------------------------------
-# ALB Listener (HTTP - Redirect to HTTPS)
+# ALB Listener - HTTP (Redirect to HTTPS)
 # ----------------------------------------
-# resource "aws_lb_listener" "http" {
-#   load_balancer_arn = aws_lb.main.arn
-#   port              = 80
-#   protocol          = "HTTP"
-  
-#   default_action {
-#     type = "redirect"
-    
-#     redirect {
-#       port        = "443"
-#       protocol    = "HTTPS"
-#       status_code = "HTTP_301"
-#     }
-#   }
-# }
-
-# ----------------------------------------
-# ALB Listener (HTTPS)
-# Note: You'll need to create ACM certificate separately
-# ----------------------------------------
-# Uncomment when you have ACM certificate
-# resource "aws_lb_listener" "https" {
-#   load_balancer_arn = aws_lb.main.arn
-#   port              = 443
-#   protocol          = "HTTPS"
-#   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
-#   certificate_arn   = "arn:aws:acm:us-west-2:ACCOUNT_ID:certificate/CERT_ID"
-#   
-#   default_action {
-#     type             = "forward"
-#     target_group_arn = aws_lb_target_group.app.arn
-#   }
-# }
-
-# Temporary: Forward HTTP directly (for testing without SSL)
-resource "aws_lb_listener" "http_forward" {
+resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
-  port              = 80
+  port              = "80"
   protocol          = "HTTP"
+  
+  default_action {
+    type = "redirect"
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+# ----------------------------------------
+# ALB Listener - HTTPS
+# ----------------------------------------
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = aws_acm_certificate_validation.cert.certificate_arn
   
   default_action {
     type             = "forward"
@@ -738,7 +783,22 @@ resource "aws_lb_listener" "http_forward" {
 }
 
 # ----------------------------------------
-# ECS Task Definition (Template - will be updated by CI/CD)
+# Route 53 A Record for Application
+# ----------------------------------------
+resource "aws_route53_record" "app" {
+  zone_id = aws_route53_zone.main.zone_id
+  name    = "recipe.${var.domain_name}"
+  type    = "A"
+  
+  alias {
+    name                   = aws_lb.main.dns_name
+    zone_id                = aws_lb.main.zone_id
+    evaluate_target_health = true
+  }
+}
+
+# ----------------------------------------
+# ECS Task Definition
 # ----------------------------------------
 resource "aws_ecs_task_definition" "app" {
   count = var.create_ecs_service ? 1 : 0
@@ -774,18 +834,6 @@ resource "aws_ecs_task_definition" "app" {
         }
       ]
       
-      # Secrets from AWS Secrets Manager (will be configured later)
-      # secrets = [
-      #   {
-      #     name      = "DATABASE_URL"
-      #     valueFrom = "arn:aws:secretsmanager:region:account:secret:db-url"
-      #   },
-      #   {
-      #     name      = "LLM_API_KEY"
-      #     valueFrom = "arn:aws:secretsmanager:region:account:secret:llm-api-key"
-      #   }
-      # ]
-      
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -811,7 +859,7 @@ resource "aws_ecs_task_definition" "app" {
 }
 
 # ----------------------------------------
-# ECS Service (Created only when create_ecs_service = true)
+# ECS Service
 # ----------------------------------------
 resource "aws_ecs_service" "app" {
   count = var.create_ecs_service ? 1 : 0
@@ -836,11 +884,6 @@ resource "aws_ecs_service" "app" {
     container_port   = var.app_port
   }
   
-#   deployment_configuration {
-#     maximum_percent         = 200
-#     minimum_healthy_percent = 100
-#   }
-  
   deployment_circuit_breaker {
     enable   = true
     rollback = true
@@ -848,13 +891,12 @@ resource "aws_ecs_service" "app" {
   
   health_check_grace_period_seconds = 60
   
-  # Ignore task definition changes - CI/CD will manage this
   lifecycle {
     ignore_changes = [task_definition, desired_count]
   }
   
   depends_on = [
-    aws_lb_listener.http_forward,
+    aws_lb_listener.https,
     aws_iam_role_policy_attachment.ecs_task_execution_role_policy
   ]
   
@@ -864,7 +906,7 @@ resource "aws_ecs_service" "app" {
 }
 
 # ----------------------------------------
-# Auto Scaling Target (Created only when service exists)
+# Auto Scaling Target
 # ----------------------------------------
 resource "aws_appautoscaling_target" "ecs" {
   count = var.create_ecs_service ? 1 : 0
@@ -898,27 +940,10 @@ resource "aws_appautoscaling_policy" "ecs_cpu" {
   }
 }
 
+#
 # ----------------------------------------
-# Auto Scaling Policy - Memory
+#  AWS codebuild and code pipleine
 # ----------------------------------------
-resource "aws_appautoscaling_policy" "ecs_memory" {
-  count = var.create_ecs_service ? 1 : 0
-  
-  name               = "${var.project_name}-${var.environment}-memory-autoscaling"
-  policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.ecs[0].resource_id
-  scalable_dimension = aws_appautoscaling_target.ecs[0].scalable_dimension
-  service_namespace  = aws_appautoscaling_target.ecs[0].service_namespace
-  
-  target_tracking_scaling_policy_configuration {
-    predefined_metric_specification {
-      predefined_metric_type = "ECSServiceAverageMemoryUtilization"
-    }
-    target_value       = 80.0
-    scale_in_cooldown  = 300
-    scale_out_cooldown = 60
-  }
-}
 
 
 # Create CodeStar connection to GitHub
@@ -1064,74 +1089,4 @@ resource "aws_codebuild_project" "recipe_finder_build" {
       stream_name = "build"
     }
   }
-}
-
-# This I beleive is not needed, it still be able to work without this
-# resource "aws_codebuild_webhook" "recipe_finder_webhook" {
-#   project_name = aws_codebuild_project.recipe_finder_build.name
-#   build_type   = "BUILD"
-
-#   filter_group {
-#     filter {
-#       type    = "EVENT"
-#       pattern = "PUSH"
-#     }
-
-#     filter {
-#       type    = "HEAD_REF"
-#       pattern = "^refs/heads/main$"
-#     }
-#   }
-# }
-# ----------------------------------------
-# Outputs
-# ----------------------------------------
-output "vpc_id" {
-  description = "VPC ID"
-  value       = aws_vpc.main.id
-}
-
-output "vpc_cidr" {
-  description = "VPC CIDR block"
-  value       = aws_vpc.main.cidr_block
-}
-
-output "public_subnet_ids" {
-  description = "Public subnet IDs"
-  value       = aws_subnet.public[*].id
-}
-
-output "private_app_subnet_ids" {
-  description = "Private application subnet IDs"
-  value       = aws_subnet.private_app[*].id
-}
-
-output "private_data_subnet_ids" {
-  description = "Private data subnet IDs"
-  value       = aws_subnet.private_data[*].id
-}
-
-output "nat_gateway_ids" {
-  description = "NAT Gateway IDs"
-  value       = aws_nat_gateway.main[*].id
-}
-
-output "availability_zones" {
-  description = "Availability zones used"
-  value       = var.availability_zones
-}
-
-output "internet_gateway_id" {
-  description = "Internet Gateway ID"
-  value       = aws_internet_gateway.main.id
-}
-
-output "codebuild_project_name" {
-  description = "CodeBuild project name"
-  value       = aws_codebuild_project.recipe_finder_build.name
-}
-
-output "codestar_connection_arn" {
-  description = "CodeStar Connection ARN - Activate this in AWS Console"
-  value       = aws_codestarconnections_connection.github.arn
 }
