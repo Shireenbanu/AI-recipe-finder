@@ -1,5 +1,5 @@
-# Build stage
-FROM public.ecr.aws/nginx/nginx:alpine as builder
+# Build stage - Using AWS Mirror for Node
+FROM public.ecr.aws/docker/library/node:18-alpine AS builder
 
 WORKDIR /app
 
@@ -15,8 +15,8 @@ COPY . .
 # Build the app
 RUN npm run build
 
-# Production stage with Nginx
-FROM nginx:alpine
+# Production stage - Using AWS Mirror for Nginx
+FROM public.ecr.aws/nginx/nginx:alpine
 
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
