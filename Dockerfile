@@ -1,47 +1,31 @@
-# 2. Production Stage (Node.js)
-FROM public.ecr.aws/docker/library/node:18-alpine
+# Build stage
+FROM node:18-alpine AS builder
+
 WORKDIR /app
 
-ENV NODE_ENV=production
-
 # Copy package files
-COPY package.json ./
-COPY package-lock.json ./
-
-# DEBUG: Print package.json BEFORE npm install
-RUN echo "=== PACKAGE.JSON BEFORE NPM INSTALL ===" && cat package.json | grep -A 2 '"type"'
+COPY package*.json ./
 
 # Install dependencies
-RUN npm install --omit=dev
+RUN npm ci
 
-# DEBUG: Print package.json AFTER npm install
-RUN echo "=== PACKAGE.JSON AFTER NPM INSTALL ===" && cat package.json | grep -A 2 '"type"'
+# Copy source code
+COPY . .
 
-# Copy package.json again to ensure it's correct
-COPY package.json ./
+# Build the app
+RUN npm run build
 
-# DEBUG: Print package.json AFTER SECOND COPY
-RUN echo "=== PACKAGE.JSON AFTER SECOND COPY ===" && cat package.json | grep -A 2 '"type"'
+# Production stage with Nginx
+FROM nginx:alpine
 
-# Copy server source files
-COPY server.js ./
-COPY routes ./routes
-COPY middleware ./middleware
-COPY controllers ./controllers
-COPY models ./models
-COPY config ./config
-COPY utils ./utils
-COPY services ./services
+# Copy built assets from builder stage
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy the built React assets
-COPY --from=builder /app/client/dist ./client/dist
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# DEBUG: Print final package.json before CMD
-RUN echo "=== FINAL PACKAGE.JSON ===" && cat package.json
+# Expose port 80
+EXPOSE 80
 
-# DEBUG: List all files
-RUN echo "=== ALL FILES IN /app ===" && ls -la
-
-EXPOSE 3000
-
-CMD ["npm", "start"]
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
