@@ -137,6 +137,80 @@ resource "aws_subnet" "private_data" {
   }
 }
 
+
+# 1. Database Security Group 
+# Only allows the ECS Tasks to "talk" to the DB
+resource "aws_security_group" "db" {
+  name        = "${var.project_name}-db-sg"
+  description = "Allow traffic from ECS tasks only"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description     = "PostgreSQL from ECS App Tier"
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs_tasks.id] 
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "PostgreSQL from VPC"
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+}
+
+# 2. DB Subnet Group
+# This links to your existing private_data subnets
+resource "aws_db_subnet_group" "main" {
+  name       = "${var.project_name}-db-subnet-group"
+  subnet_ids = aws_subnet.private_data[*].id
+
+  tags = {
+    Name = "${var.project_name}-db-subnet-group"
+  }
+}
+
+# 3. The RDS Instance
+resource "aws_db_instance" "recipe_db" {
+  identifier           = "${var.project_name}-db"
+  engine               = "postgres"
+  engine_version       = "15"
+  instance_class       = "db.t4g.micro" # Burstable, cost-effective ARM instance
+  allocated_storage    = 20
+  storage_type         = "gp3"
+  
+  db_name              = "recipedb"
+  username             = "shireen_admin"
+  password             = var.db_password # Defined in variables or secrets manager
+  
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+  vpc_security_group_ids = [aws_security_group.db.id]
+  
+  # Security settings
+  publicly_accessible    = false # Keeps it inside your private_data subnet
+  skip_final_snapshot    = true  # Set to false for a real production environment
+  multi_az               = true  # High Availability (matches your multi-AZ VPC)
+  
+  backup_retention_period = 7
+}
+
+# 4. Variable for the password (Marked as sensitive)
+variable "db_password" {
+  description = "Master password for the RDS instance"
+  type        = string
+  sensitive   = true
+}
+
 # ----------------------------------------
 # Elastic IPs for NAT Gateways
 # ----------------------------------------
@@ -424,7 +498,7 @@ variable "docker_image" {
 variable "create_ecs_service" {
   description = "Set to true when ready to deploy via CI/CD pipeline"
   type        = bool
-  default     = false
+  default     = true // updating it to true , docker image is ready to be pulled from ECR
 }
 
 # ----------------------------------------
@@ -814,7 +888,37 @@ resource "aws_ecs_task_definition" "app" {
     {
       name  = var.app_name
       image = var.docker_image != "" ? var.docker_image : "${aws_ecr_repository.app.repository_url}:latest"
-      
+
+      environment = [
+        { name = "VITE_COGNITO_USER_POOL_ID", value = "us-west-2_8hJ9rdYYz"},
+        { name = "VITE_COGNITO_CLIENT_ID",    value = "REDACTED_CLIENT_ID" },
+        { name = "DB_HOST",                   value = "recipe-finder-db.c3mwu62uchlh.us-west-2.rds.amazonaws.com" },
+        { name = "DB_PORT",                   value = "5432" },
+        { name = "DB_NAME",                   value = "recipedb" },
+        { name = "DB_USER",                   value = "shireen_admin" },
+        { name = "PORT",                      value = "3000" },
+        { name = "NODE_ENV",                  value = "production" },
+        { name = "AWS_REGION",                value = "us-west-2" },
+        { name = "AWS_ACCESS_KEY_ID",         value = "REDACTED_AWS_KEY" },
+        { name = "AWS_S3_BUCKET_NAME",        value = "ai-recipe-app-uploads-2026-us-west" }
+      ]
+
+      # 2. SENSITIVE DATA (Secrets from Secrets Manager)
+      secrets = [
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:DB_PASSWORD::"
+        },
+        {
+          name      = "GEMINI_API_KEY"
+          valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:GEMINI_API_KEY::"
+        },
+        {
+          name      = "AWS_SECRET_ACCESS_KEY"
+          valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:AWS_SECRET_ACCESS_KEY::"
+        }
+      ]
+
       portMappings = [
         {
           containerPort = var.app_port
@@ -833,6 +937,11 @@ resource "aws_ecs_task_definition" "app" {
         }
       ]
       
+
+
+
+
+
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -1088,4 +1197,17 @@ resource "aws_codebuild_project" "recipe_finder_build" {
       stream_name = "build"
     }
   }
+}
+
+# 1. Define the Secret Metadata
+resource "aws_secretsmanager_secret" "app_secrets" {
+  name        = "production/recipe-app/secrets"
+  description = "Contains DB credentials and host information"
+}
+
+# 2. Upload the JSON file as the secret value
+resource "aws_secretsmanager_secret_version" "app_secrets_val" {
+  secret_id     = aws_secretsmanager_secret.app_secrets.id
+  # trimspace ensures no accidental newlines from the file are uploaded
+  secret_string = file("${path.module}/secrets.json")
 }
