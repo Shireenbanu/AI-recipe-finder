@@ -25,3 +25,4 @@ dist-ssr
 *.sw?
 terraform.*
 !.terraform.lock.hcl
+secrets.json

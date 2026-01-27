@@ -17,7 +17,12 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(helmet({
-  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "connect-src": ["'self'", "https://cognito-idp.us-west-2.amazonaws.com", "https://*.amazoncognito.com"],
+    },
+  },
 }));
 app.use(cors());
 app.use(compression());
