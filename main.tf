@@ -1201,7 +1201,7 @@ resource "aws_codebuild_project" "recipe_finder_build" {
 
 # 1. Define the Secret Metadata
 resource "aws_secretsmanager_secret" "app_secrets" {
-  name        = "production/recipe-app/secrets"
+  name        = "production/recipe-finder/secrets"
   description = "Contains DB credentials and host information"
 }
 

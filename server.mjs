@@ -44,8 +44,8 @@ app.use('/api/medical-conditions', medicalConditionRoutes);
 app.use('/api/upload-lab-report', fileRoutes);
 
 // Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Recipe Finder API is running' });
+app.listen(3000, '0.0.0.0', () => {
+    console.log('Server is running on 0.0.0.0:3000');
 });
 
 // Serve React frontend in production
