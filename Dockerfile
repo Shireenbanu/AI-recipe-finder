@@ -25,7 +25,7 @@ FROM public.ecr.aws/docker/library/node:20-alpine
 WORKDIR /app
 
 # Install Nginx to serve the static frontend
-RUN apk add --no-cache nginx
+RUN apk add --no-cache nginx curl
 
 # Copy Backend node_modules and code from builder
 COPY --from=builder /app/node_modules ./node_modules
