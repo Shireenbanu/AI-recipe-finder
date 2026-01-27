@@ -5,8 +5,14 @@ import helmet from 'helmet';
 import compression from 'compression';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import fileRoutes from './routes/fileRoutes.js';
 
+// 2. All local route imports (with extensions!)
+import fileRoutes from './routes/fileRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import recipeRoutes from './routes/recipeRoutes.js';
+import medicalConditionRoutes from './routes/medicalConditionRoutes.js';
+
+// 3. Now initialize configuration
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -29,11 +35,7 @@ app.use(compression());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// API Routes
-import userRoutes from './routes/userRoutes.js';
-import recipeRoutes from './routes/recipeRoutes.js';
-// import chatRoutes from './routes/chatRoutes.js';
-import medicalConditionRoutes from './routes/medicalConditionRoutes.js';
+
 
 app.use('/api/users', userRoutes);
 app.use('/api/recipes', recipeRoutes);
