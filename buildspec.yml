@@ -20,10 +20,6 @@ phases:
       - echo "POST-BUILD PHASE STARTED"
       - docker push $REPOSITORY_URI:latest
       - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - docker run --rm $REPOSITORY_URI:latest cat /app/package.json | grep -i "type"
-      - echo "=== LISTING FILES IN CONTAINER ==="
-      - docker run --rm $REPOSITORY_URI:latest ls -la /app
-
       - printf '[{"name":"recipe-finder-container","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
 artifacts:
   files:
