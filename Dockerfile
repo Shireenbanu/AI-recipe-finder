@@ -21,19 +21,25 @@ WORKDIR /app
 # Set environment to production
 ENV NODE_ENV=production
 
-# Copy only the files needed to run the server
+# Copy package.json FIRST (preserves "type": "module")
 COPY package*.json ./
-# Install only production dependencies (no devDependencies)
+
+# Install only production dependencies
 RUN npm install --omit=dev
 
-# Copy the server source code
-COPY . .
+# Copy server source code
+COPY server.js ./
+COPY routes ./routes
+COPY middleware ./middleware
+COPY controllers ./controllers
+COPY models ./models
+COPY config ./config
+COPY utils ./utils
+# Add any other backend directories you have
 
-# Copy the built React assets from the builder stage 
-# This matches your server.js logic: path.join(__dirname, 'client/dist')
+# Copy the built React assets from the builder stage
 COPY --from=builder /app/client/dist ./client/dist
 
 EXPOSE 3000
 
-# Start the Express server
 CMD ["node", "server.js"]
