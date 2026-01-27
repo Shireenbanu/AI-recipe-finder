@@ -10,31 +10,21 @@ phases:
       - REPOSITORY_URI=045615334997.dkr.ecr.us-west-2.amazonaws.com/recipe-finder-prod
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_TAG=${COMMIT_HASH:=latest}
-      # DEBUG: Check source package.json
-      - echo "=== SOURCE PACKAGE.JSON ==="
-      - cat package.json
   build:
     commands:
       - echo "BUILD PHASE STARTED"
-      - docker build --no-cache -t $REPOSITORY_URI:latest .
+      - docker build -t $REPOSITORY_URI:latest .
       - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
-      # DEBUG: Check what's inside the built Docker image
-      - echo "=== CHECKING BUILT IMAGE PACKAGE.JSON ==="
-      - docker run --rm $REPOSITORY_URI:latest cat /app/package.json
-      - echo "=== CHECKING FOR type module ==="
-      - docker run --rm $REPOSITORY_URI:latest cat /app/package.json | grep -i "type"
-      - echo "=== LISTING FILES IN CONTAINER ==="
-      - docker run --rm $REPOSITORY_URI:latest ls -la /app
-      # DEBUG: Try to start the container and see what happens
-      - echo "=== TESTING CONTAINER STARTUP ==="
-      - docker run --rm $REPOSITORY_URI:latest node --version
-      - docker run --rm $REPOSITORY_URI:latest npm --version
   post_build:
     commands:
       - echo "POST-BUILD PHASE STARTED"
       - docker push $REPOSITORY_URI:latest
       - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - printf '[{"name":"recipe-finder-api","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
+      - docker run --rm $REPOSITORY_URI:latest cat /app/package.json | grep -i "type"
+      - echo "=== LISTING FILES IN CONTAINER ==="
+      - docker run --rm $REPOSITORY_URI:latest ls -la /app
+
+      - printf '[{"name":"recipe-finder-container","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
 artifacts:
   files:
     - imagedefinitions.json
