@@ -31,4 +31,4 @@ EXPOSE 80
 # Start both Nginx and Express
 # We use -g "daemon off;" to keep Nginx running in the foreground 
 # while node runs in the background or vice versa.
-CMD service nginx start && node server.js
+CMD service nginx start && node server.mjs
