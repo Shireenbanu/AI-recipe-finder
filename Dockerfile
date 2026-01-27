@@ -1,42 +1,47 @@
-# 1. Build Stage (React)
-FROM public.ecr.aws/docker/library/node:18-alpine AS builder
-WORKDIR /app
-
-# Copy dependency files
-COPY package*.json ./
-COPY client/package*.json ./client/
-
-# Install dependencies for both backend and frontend
-RUN npm install
-RUN npm run client:install
-
-# Copy source and build React
-COPY . .
-RUN npm run client:build
-
 # 2. Production Stage (Node.js)
 FROM public.ecr.aws/docker/library/node:18-alpine
 WORKDIR /app
 
-# Set environment to production
 ENV NODE_ENV=production
 
-# Copy only the files needed to run the server
-COPY package*.json ./
-# Install only production dependencies (no devDependencies)
-RUN npm install 
+# Copy package files
+COPY package.json ./
+COPY package-lock.json ./
 
-# Copy the server source code
-COPY . .
+# DEBUG: Print package.json BEFORE npm install
+RUN echo "=== PACKAGE.JSON BEFORE NPM INSTALL ===" && cat package.json | grep -A 2 '"type"'
 
-# Copy the built React assets from the builder stage 
-# This matches your server.js logic: path.join(__dirname, 'client/dist')
+# Install dependencies
+RUN npm install --omit=dev
+
+# DEBUG: Print package.json AFTER npm install
+RUN echo "=== PACKAGE.JSON AFTER NPM INSTALL ===" && cat package.json | grep -A 2 '"type"'
+
+# Copy package.json again to ensure it's correct
+COPY package.json ./
+
+# DEBUG: Print package.json AFTER SECOND COPY
+RUN echo "=== PACKAGE.JSON AFTER SECOND COPY ===" && cat package.json | grep -A 2 '"type"'
+
+# Copy server source files
+COPY server.js ./
+COPY routes ./routes
+COPY middleware ./middleware
+COPY controllers ./controllers
+COPY models ./models
+COPY config ./config
+COPY utils ./utils
+COPY services ./services
+
+# Copy the built React assets
 COPY --from=builder /app/client/dist ./client/dist
 
-EXPOSE 3000
+# DEBUG: Print final package.json before CMD
+RUN echo "=== FINAL PACKAGE.JSON ===" && cat package.json
 
-# Add this before CMD
-RUN echo "=== PACKAGE.JSON CONTENT ===" && cat package.json
-RUN echo "=== FILES IN /app ===" && ls -la
+# DEBUG: List all files
+RUN echo "=== ALL FILES IN /app ===" && ls -la
+
+EXPOSE 3000
 
 CMD ["npm", "start"]
