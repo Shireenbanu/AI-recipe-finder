@@ -1,34 +1,49 @@
-# --- STAGE 1: Build Frontend ---
-# Replace node:20-slim with the AWS ECR version
-FROM public.ecr.aws/docker/library/node:20-slim AS builder
+# --- STAGE 1: Build the React Frontend ---
+FROM node:20-alpine AS builder
 WORKDIR /app
+
+# 1. Copy root package files to handle scripts
+COPY package*.json ./
+
+# 2. Copy client package files specifically
 COPY client/package*.json ./client/
-RUN cd client && npm install
-COPY client/ ./client/
-RUN cd client && npm run build
 
-# --- STAGE 2: Production Image ---
-FROM public.ecr.aws/docker/library/node:20-slim
+# 3. Install ALL dependencies (Root + Client)
+# This ensures "cd client && npm install" works
+RUN npm install
+RUN npm run client:install
+
+# 4. Copy the rest of the source code
+COPY . .
+
+# 5. Build the React app (creates client/dist)
+RUN npm run client:build
+
+
+# --- STAGE 2: Final Production Image ---
+FROM node:20-alpine
 WORKDIR /app
 
-# Install Nginx (The debian-slim image uses apt)
-RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
+# Install Nginx to serve the static frontend
+RUN apk add --no-cache nginx
 
-# Copy built frontend to Nginx html directory
+# Copy Backend node_modules and code from builder
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/server.mjs ./
+COPY --from=builder /app/scripts ./scripts
+
+COPY . .
+
+# Copy the React Build to Nginx's default folder
 COPY --from=builder /app/client/dist /usr/share/nginx/html
 
-# Copy Nginx config (Ensure nginx.conf is in your root directory)
-COPY nginx.conf /etc/nginx/sites-available/default
-
-# Set up Backend
-COPY package*.json ./
-RUN npm install --production
-COPY . .
+# Copy your Nginx config
+COPY nginx.conf /etc/nginx/http.d/default.conf
 
 # Expose Port 80 for Nginx
 EXPOSE 80
 
-# Start both Nginx and Express
-# We use -g "daemon off;" to keep Nginx running in the foreground 
-# while node runs in the background or vice versa.
-CMD service nginx start && node server.mjs
+# Use JSON format for CMD (Fixes your Warning)
+# This starts Nginx in the background and Node in the foreground
+CMD ["sh", "-c", "nginx && node server.mjs"]

@@ -186,7 +186,7 @@ resource "aws_db_instance" "recipe_db" {
   engine               = "postgres"
   engine_version       = "15"
   instance_class       = "db.t4g.micro" # Burstable, cost-effective ARM instance
-  allocated_storage    = 20
+  allocated_storage    = 10
   storage_type         = "gp3"
   
   db_name              = "recipedb"
