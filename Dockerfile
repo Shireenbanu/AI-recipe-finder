@@ -21,25 +21,22 @@ WORKDIR /app
 # Set environment to production
 ENV NODE_ENV=production
 
-# Copy package.json FIRST (preserves "type": "module")
+# Copy only the files needed to run the server
 COPY package*.json ./
+# Install only production dependencies (no devDependencies)
+RUN npm install 
 
-# Install only production dependencies
-RUN npm install --omit=dev
+# Copy the server source code
+COPY . .
 
-# Copy server source code
-COPY server.js ./
-COPY routes ./routes
-COPY middleware ./middleware
-COPY controllers ./controllers
-COPY models ./models
-COPY config ./config
-COPY utils ./utils
-# Add any other backend directories you have
-
-# Copy the built React assets from the builder stage
+# Copy the built React assets from the builder stage 
+# This matches your server.js logic: path.join(__dirname, 'client/dist')
 COPY --from=builder /app/client/dist ./client/dist
 
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+# Add this before CMD
+RUN echo "=== PACKAGE.JSON CONTENT ===" && cat package.json
+RUN echo "=== FILES IN /app ===" && ls -la
+
+CMD ["npm", "start"]
