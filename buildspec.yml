@@ -10,17 +10,20 @@ phases:
       - REPOSITORY_URI=045615334997.dkr.ecr.us-west-2.amazonaws.com/recipe-finder-prod
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_TAG=${COMMIT_HASH:=latest}
+      # DEBUG: Check if package.json has "type": "module"
+      - echo "Checking package.json contents:"
+      - cat package.json | grep -A 2 '"type"'
   build:
     commands:
       - echo "BUILD PHASE STARTED"
-      - docker build -t $REPOSITORY_URI:latest .
+      - docker build --no-cache -t $REPOSITORY_URI:latest .
       - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
   post_build:
     commands:
       - echo "POST-BUILD PHASE STARTED"
       - docker push $REPOSITORY_URI:latest
       - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - printf '[{"name":"recipe-finder-container","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
+      - printf '[{"name":"recipe-finder-api","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
 artifacts:
   files:
     - imagedefinitions.json
