@@ -1,5 +1,5 @@
 # --- STAGE 1: Build the React Frontend ---
-FROM node:20-alpine AS builder
+FROM public.ecr.aws/docker/library/node:20-alpine AS builder
 WORKDIR /app
 
 # 1. Copy root package files to handle scripts
@@ -21,7 +21,7 @@ RUN npm run client:build
 
 
 # --- STAGE 2: Final Production Image ---
-FROM node:20-alpine
+FROM public.ecr.aws/docker/library/node:20-alpine
 WORKDIR /app
 
 # Install Nginx to serve the static frontend
@@ -31,9 +31,14 @@ RUN apk add --no-cache nginx
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/server.mjs ./
+COPY --from=builder /app/routes ./routes
+COPY --from=builder /app/controllers ./controllers
 COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/services ./services
+COPY --from=builder /app/models ./models
+COPY --from=builder /app/config ./config
 
-COPY . .
+# COPY . .
 
 # Copy the React Build to Nginx's default folder
 COPY --from=builder /app/client/dist /usr/share/nginx/html
