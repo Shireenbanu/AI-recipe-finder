@@ -5,10 +5,10 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
-  }
+//   credentials: {
+//     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+//     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+//   }
 });
 
 const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME;
@@ -16,6 +16,8 @@ const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME;
 // Upload file to S3
 export async function uploadFile(file, userId) {
   const fileName = `lab-reports/${userId}/${Date.now()}-${file.originalname}`;
+  console.log(BUCKET_NAME)
+  console.log("Inside the upload block")
 
   const params = {
     Bucket: BUCKET_NAME,
