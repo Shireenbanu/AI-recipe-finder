@@ -18,6 +18,7 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: false // This allows the connection without a local .pem file
   }
+  // ssl: false
 });
 
 // Test the connection
