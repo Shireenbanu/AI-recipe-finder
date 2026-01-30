@@ -45,13 +45,13 @@ variable "domain_name" {
 variable "app_port" {
   description = "Application port"
   type        = number
-  default     = 3000
+  default     = 80
 }
 
 variable "db_password" {
   description = "Master password for RDS"
   type        = string
-  sensitive   = true
+  default   = 9900126357
 }
 
 # ----------------------------------------
@@ -720,10 +720,14 @@ resource "aws_ecs_task_definition" "app" {
     name  = var.app_name
     image = var.docker_image != "" ? var.docker_image : "${aws_ecr_repository.app.repository_url}:latest"
     
-    portMappings = [{
-      containerPort = var.app_port
-      protocol      = "tcp"
-    }]
+    
+    portMappings = [
+        {
+          containerPort = 80
+          hostPort      = 80 # Must be 80 for Fargate/awsvpc mode
+          protocol      = "tcp"
+        }
+      ]
     
     environment = [
       {
@@ -791,7 +795,7 @@ resource "aws_ecs_task_definition" "app" {
     }
     
     healthCheck = {
-      command     = ["CMD-SHELL", "curl -f http://localhost:${var.app_port}/|| exit 1"]
+      command     = ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
       interval    = 30
       timeout     = 5
       retries     = 3
@@ -802,6 +806,88 @@ resource "aws_ecs_task_definition" "app" {
   tags = {
     Name = "${var.project_name}-${var.environment}-task-def"
   }
+}
+
+# ========================================
+# APPLICATION LOAD BALANCER
+# Add this section BEFORE your ECS Task Definition
+# ========================================
+
+resource "aws_lb" "main" {
+  name               = "${var.project_name}-${var.environment}-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb.id]
+  subnets            = aws_subnet.public[*].id
+  
+  enable_deletion_protection       = false
+  enable_http2                     = true
+  enable_cross_zone_load_balancing = true
+  
+  tags = {
+    Name = "${var.project_name}-${var.environment}-alb"
+  }
+}
+
+resource "aws_lb_target_group" "app" {
+  name        = "${var.project_name}-${var.environment}-tg"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
+  
+  health_check {
+    enabled             = true
+    path                = "/"        # This matches your curl http://127.0.0.1/
+    port                = "traffic-port" # This targets Port 80
+    protocol            = "HTTP"
+    matcher             = "200-399"  # Accepts any successful status or redirect
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2          # Fewer checks to turn green faster
+    unhealthy_threshold = 3
+  }
+  
+  deregistration_delay = 30
+  
+  tags = {
+    Name = "${var.project_name}-${var.environment}-tg"
+  }
+}
+
+resource "aws_lb_listener" "http" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type = "redirect"
+
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301" # Permanent redirect
+    }
+  }
+}
+
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08"
+  certificate_arn   = aws_acm_certificate_validation.cert.certificate_arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app.arn # Your port 80 TG
+  }
+}
+
+# Add this output at the end of your file
+output "alb_dns_name" {
+  description = "ALB DNS name - use this to access your app"
+  value       = aws_lb.main.dns_name
 }
 
 # ========================================
@@ -824,6 +910,15 @@ resource "aws_ecs_service" "app" {
     security_groups  = [aws_security_group.ecs_tasks.id]
     assign_public_ip = true
   }
+
+   load_balancer {
+    target_group_arn = aws_lb_target_group.app.arn
+    container_name   = var.app_name
+    container_port   = 80
+  }
+  
+  health_check_grace_period_seconds = 60
+  
   
   deployment_circuit_breaker {
     enable   = true
@@ -1058,5 +1153,76 @@ resource "aws_codebuild_project" "recipe_finder_build" {
       group_name  = "/aws/codebuild/recipe-finder"
       stream_name = "build"
     }
+  }
+}
+# ========================================
+# ROUTE 53 & SSL CERTIFICATE (ACM)
+# ========================================
+# ----------------------------------------
+# Route 53 Hosted Zone
+# ----------------------------------------
+
+resource "aws_route53_zone" "main" {
+  name = var.domain_name
+  
+  tags = {
+    Name = "${var.project_name}-${var.environment}-zone"
+  }
+}
+
+# ----------------------------------------
+# ACM Certificate for SSL/TLS
+# ----------------------------------------
+resource "aws_acm_certificate" "cert" {
+  domain_name       = var.domain_name
+  validation_method = "DNS"
+  subject_alternative_names = ["*.${var.domain_name}"]
+  
+  lifecycle {
+    create_before_destroy = true
+  }
+  
+  tags = {
+    Name = "${var.project_name}-${var.environment}-cert"
+  }
+}
+
+# ----------------------------------------
+# Route 53 Records for Certificate Validation
+# ----------------------------------------
+resource "aws_route53_record" "cert_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.cert.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+  
+  allow_overwrite = true
+  name            = each.value.name
+  records         = [each.value.record]
+  ttl             = 60
+  type            = each.value.type
+  zone_id         = aws_route53_zone.main.zone_id
+}
+
+# ----------------------------------------
+# ACM Certificate Validation
+# ----------------------------------------
+resource "aws_acm_certificate_validation" "cert" {
+  certificate_arn         = aws_acm_certificate.cert.arn
+  validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
+}
+
+resource "aws_route53_record" "www" {
+  zone_id = aws_route53_zone.main.zone_id
+  name    = var.domain_name
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.main.dns_name
+    zone_id                = aws_lb.main.zone_id
+    evaluate_target_health = true
   }
 }
