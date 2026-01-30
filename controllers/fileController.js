@@ -44,7 +44,6 @@ export async function uploadLabReport(req, res) {
     // Upload to S3
     const result = await S3Service.uploadFile(req,file, userId);
     // Save to user
-    console.log(result.fileUrl, userId)
     saveFileNameForFutureUse(result.fileName, userId)
 
     // Log success
@@ -82,10 +81,9 @@ export async function getS3PreSignedURL(req, res) {
     });
   }
 
-  console.log('Generating URL for:', fileURL);
 
   try {
-    const preSignedUrl = await S3Service.getSignedFileUrl(fileURL);
+    const preSignedUrl = await S3Service.getSignedFileUrl(req,fileURL);
     
     console.log('Successfully generated presigned URL');
 

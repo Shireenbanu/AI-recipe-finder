@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authFetch } from '../../services/apiClient.js'; 
 
 function MedicalConditionsPage() {
   const navigate = useNavigate();
@@ -14,7 +15,7 @@ function MedicalConditionsPage() {
 
   const fetchConditions = async () => {
     try {
-      const response = await fetch('/api/medical-conditions');
+      const response = await authFetch('/api/medical-conditions');
       const data = await response.json();
       if (data.success) {
         setConditions(data.conditions);
@@ -59,7 +60,7 @@ function MedicalConditionsPage() {
 
   const handleAddCondition = async (conditionId) => {
     try {
-      const response = await fetch(`/api/users/${userId}/conditions`, {
+      const response = await authFetch(`/api/users/${userId}/conditions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

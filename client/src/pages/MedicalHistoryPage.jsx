@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authFetch } from '../../services/apiClient.js';
 
 function MedicalHistoryPage() {
   const navigate = useNavigate();
@@ -17,17 +18,29 @@ function MedicalHistoryPage() {
     fetchMedicalHistory();
   }, [userId, navigate]);
 
+  const fetchLabReports = async () => {
+    try {
+      const res = await authFetch(`/api/users/lab_reports/${userId}`);
+      const data = await res.json();
+      
+      if (data.success) {
+ 
+        setLabReports(data.files || []); 
+      }
+    } catch (error) {
+      console.error('Error fetching lab reports:', error);
+    }
+  }
+
   const fetchMedicalHistory = async () => {
     try {
-      const conditionsRes = await fetch(`/api/users/${userId}/conditions`);
+      const conditionsRes = await authFetch(`/api/users/${userId}/conditions`);
       const conditionsData = await conditionsRes.json();
 
       if (conditionsData.success) {
         setConditions(conditionsData.conditions);
       }
-
-      const storedReports = JSON.parse(localStorage.getItem('labReports') || '[]');
-      setLabReports(storedReports);
+      await fetchLabReports()
 
     } catch (error) {
       console.error('Error fetching medical history:', error);
@@ -36,12 +49,13 @@ function MedicalHistoryPage() {
     }
   };
 
+      
+    
+
   const handleViewReport = async (report) => {
     console.log(report)
   try {
-    console.log('handle View Report')
-    // 1. Ask your backend for a temporary VIP pass (Presigned URL)
-    const res = await fetch(`/api/reports/presign?fileURL=${report.fileUrl}`);
+    const res = await authFetch(`/api/reports/presign?fileURL=${report}`);
     const data = await res.json();
 
     if (data.success) {
@@ -66,7 +80,7 @@ function MedicalHistoryPage() {
     formData.append('userId', userId);
 
     try {
-      const response = await fetch('/api/reports/uploadLabReport', {
+      const response = await authFetch('/api/reports/uploadLabReport', {
         method: 'POST',
         body: formData
       });
@@ -75,15 +89,7 @@ function MedicalHistoryPage() {
       console.log('response received from fileupload', data)
 
       if (data.success) {
-        const newReport = {
-          fileName: data.file.fileName,
-          fileUrl: data.file.fileUrl,
-          uploadedAt: data.file.uploadedAt
-        };
-
-        const updatedReports = [...labReports, newReport];
-        setLabReports(updatedReports);
-        localStorage.setItem('labReports', JSON.stringify(updatedReports));
+       await fetchLabReports()
 
         alert('Lab report uploaded successfully!');
         e.target.value = '';
@@ -213,9 +219,9 @@ function MedicalHistoryPage() {
                       📄
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-800">{report.fileName}</p>
+                      <p className="font-semibold text-gray-800">{report.split('/').pop().replace(/^\d+-/, '')}</p>
                       <p className="text-xs text-gray-500">
-                        {new Date(report.uploadedAt).toLocaleString()}
+                        {/* {new Date(report.uploadedAt).toLocaleString()} */}
                       </p>
                     </div>
                   </div>

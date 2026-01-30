@@ -34,6 +34,18 @@ export async function getUserByEmail(email) {
   return result.rows[0];
 }
 
+// Get user by email
+export async function getUserLabReports(userId) {
+  // console.log("userId", userId)
+  const query = 
+    'SELECT lab_reports FROM users WHERE id = $1'
+  ;
+  
+  const result = await pool.query(query, [userId]);
+  // console.log("query pool ", result.rows[0].lab_reports)
+  return result.rows[0].lab_reports;
+}
+
 // Update user profile
 export async function updateUser(userId, updates) {
   const { name, email } = updates;
