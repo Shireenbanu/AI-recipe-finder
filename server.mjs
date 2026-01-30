@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { contextBuilder } from './middlewares/contextBuilder.js';
 
 // 2. All local route imports (with extensions!)
 import fileRoutes from './routes/fileRoutes.js';
@@ -35,13 +36,17 @@ app.use(compression());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-
+//Tell Express to trust the Nginx proxy headers
+app.set('trust proxy', true);
+// Global Middlewares
+app.use(express.json());
+app.use(contextBuilder);
 
 app.use('/api/users', userRoutes);
 app.use('/api/recipes', recipeRoutes);
 // app.use('/api/chat', chatRoutes);
 app.use('/api/medical-conditions', medicalConditionRoutes);
-app.use('/api/upload-lab-report', fileRoutes);
+app.use('/api/reports', fileRoutes);
 
 // Health check
 app.listen(3000, '0.0.0.0', () => {

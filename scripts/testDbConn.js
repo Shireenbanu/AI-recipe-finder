@@ -25,9 +25,9 @@ async function testConnection() {
     console.error('  1. Docker PostgreSQL is running: docker-compose up -d');
     console.error('  2. .env file has correct credentials');
     console.error('  3. Port 5432 is not blocked');
-  } finally {
-    await pool.end();
-  }
+  } 
+  // finally {
+  //   await pool.end();
+  // }
 }
 
-testConnection();
