@@ -2,23 +2,25 @@
 import 'dotenv/config';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import {logPerformance} from './splunkLogger.js';
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
-//   credentials: {
-//     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-//     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
-//   }
+  // credentials: {
+  //   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  //   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+  // }
 });
 
 const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME;
+const start = Date.now()
 
 // Upload file to S3
-export async function uploadFile(file, userId) {
+export async function uploadFile(req,file, userId) {
   const fileName = `lab-reports/${userId}/${Date.now()}-${file.originalname}`;
   console.log(BUCKET_NAME)
   console.log("Inside the upload block")
-
+console.log(req)
   const params = {
     Bucket: BUCKET_NAME,
     Key: fileName,
@@ -58,10 +60,12 @@ export async function uploadFile(file, userId) {
 }
 
 // Generate signed URL (valid for 1 hour)
-export async function getSignedFileUrl(fileURL) {
+export async function getSignedFileUrl(req, fileKey) {
+  const start = Date.now();
+  
   const command = new GetObjectCommand({
     Bucket: BUCKET_NAME,
-    Key: fileURL
+    Key: fileKey
   });
 
   try {
@@ -70,5 +74,17 @@ export async function getSignedFileUrl(fileURL) {
   } catch (error) {
     console.error('S3 Signed URL Error:', error);
     throw new Error('Failed to generate file URL');
+  } finally {
+    const duration = Date.now() - start;
+
+    // 1. Log the individual access event (Security + Performance)
+    logPerformance(req, 'S3_GET_SIGNED_URL', duration, { 
+      file_key: fileKey 
+    });
+
+    // 2. (Optional) If this is part of a journey, track it:
+    if (req.journey) {
+      req.journey.segments.s3_access_ms = duration;
+    }
   }
 }

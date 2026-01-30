@@ -8,6 +8,8 @@ router.post('/', userController.createUser);
 router.get('/:userId', userController.getUserProfile);
 router.put('/:userId', userController.updateUserProfile);
 router.get('/email/:email', userController.getUserByEmail)
+router.get('/lab_reports/:userId', userController.listUserReports)
+
 
 // Medical conditions
 router.get('/:userId/conditions', userController.getUserConditions);

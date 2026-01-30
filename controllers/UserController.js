@@ -64,6 +64,27 @@ export async function getUserByEmail(req, res){
 };
 
 
+export async function listUserReports(req,res){
+
+  try {
+    const { userId } = req.params;
+
+    const result = await User.getUserLabReports(userId);
+    console.log(result)
+
+    if (result.length === 0) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+
+    res.json({ success: true, files : result });
+    
+  } catch (error) {
+    console.error('Database Error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+};
+
 // Get user profile
 export async function getUserProfile(req, res) {
   try {
