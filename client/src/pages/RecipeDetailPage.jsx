@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 function RecipeDetailPage() {
+  const navigate = useNavigate();
   const { recipeId } = useParams();
   const [recipe, setRecipe] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -71,7 +73,17 @@ function RecipeDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-8">
-        
+        {/* Header */}
+      <div className="bg-white shadow-md">
+        <div className="max-w-6xl mx-auto px-8 py-4">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="text-blue-600 hover:text-blue-700"
+          >
+            ← Back to Dashboard
+          </button>
+        </div>
+      </div>
         {/* Recipe Details */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h1 className="text-3xl font-bold mb-4">{recipe.title}</h1>

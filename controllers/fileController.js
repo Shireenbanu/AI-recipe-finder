@@ -23,7 +23,7 @@ export async function uploadLabReport(req, res) {
     }
 
     // Security checks
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+    const allowedTypes = ['application/pdf'];
     if (!allowedTypes.includes(file.mimetype)) {
       logSuspiciousFileUpload(req, file, 'Invalid file type');
       return res.status(400).json({
