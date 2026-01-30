@@ -71,10 +71,14 @@ export const getClient = async () => {
 };
 
 // Graceful shutdown
-process.on('SIGINT', async () => {
-  await pool.end();
-  console.log('PostgreSQL pool has ended');
-  process.exit(0);
+// process.on('SIGINT', async () => {
+//   await pool.end();
+//   console.log('PostgreSQL pool has ended');
+//   process.exit(0);
+// });
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
 });
 
 export default pool;

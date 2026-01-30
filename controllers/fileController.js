@@ -42,7 +42,7 @@ export async function uploadLabReport(req, res) {
     }
 
     // Upload to S3
-    const result = await S3Service.uploadFile(file, userId);
+    const result = await S3Service.uploadFile(req,file, userId);
     // Save to user
     console.log(result.fileUrl, userId)
     saveFileNameForFutureUse(result.fileName, userId)
@@ -55,7 +55,7 @@ export async function uploadLabReport(req, res) {
       success: true,
       file: {
         fileName: file.originalname,
-        fileUrl: result.fileUrl,
+        fileUrl: result.fileName,
         uploadedAt: new Date().toISOString()
       }
     });
@@ -66,6 +66,40 @@ export async function uploadLabReport(req, res) {
     res.status(500).json({
       success: false,
       error: 'Failed to upload file'
+    });
+  }
+}
+
+
+
+export async function getS3PreSignedURL(req, res) {
+  const { fileURL } = req.query; 
+
+  if (!fileURL) {
+    return res.status(400).json({
+      success: false,
+      message: "fileURL query parameter is required"
+    });
+  }
+
+  console.log('Generating URL for:', fileURL);
+
+  try {
+    const preSignedUrl = await S3Service.getSignedFileUrl(fileURL);
+    
+    console.log('Successfully generated presigned URL');
+
+    return res.json({
+      success: true,
+      s3Url: preSignedUrl,
+    });
+  } catch (error) {
+    console.error('Error in getS3PreSignedURL controller:', error);
+    
+    return res.status(500).json({
+      success: false,
+      message: "Failed to generate download link",
+      error: error.message
     });
   }
 }

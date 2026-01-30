@@ -36,15 +36,17 @@ function MedicalHistoryPage() {
     }
   };
 
-  const handleViewReport = async (fileName) => {
+  const handleViewReport = async (report) => {
+    console.log(report)
   try {
+    console.log('handle View Report')
     // 1. Ask your backend for a temporary VIP pass (Presigned URL)
-    const res = await fetch(`/api/reports/presign?fileName=${fileName}&userId=${userId}`);
+    const res = await fetch(`/api/reports/presign?fileURL=${report.fileUrl}`);
     const data = await res.json();
 
     if (data.success) {
       // 2. Open the temporary link in a new tab
-      window.open(data.url, '_blank');
+      window.open(data.s3Url, '_blank');
     } else {
       alert("Could not generate access link");
     }
@@ -64,12 +66,13 @@ function MedicalHistoryPage() {
     formData.append('userId', userId);
 
     try {
-      const response = await fetch('/api/upload-lab-report', {
+      const response = await fetch('/api/reports/uploadLabReport', {
         method: 'POST',
         body: formData
       });
 
       const data = await response.json();
+      console.log('response received from fileupload', data)
 
       if (data.success) {
         const newReport = {
@@ -218,7 +221,7 @@ function MedicalHistoryPage() {
                   </div>
 
                   <button
-                    onClick={() => handleViewReport(report.fileName)}
+                    onClick={() => handleViewReport(report)}
                     className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-200 font-medium transition-colors"
                   >
                     View

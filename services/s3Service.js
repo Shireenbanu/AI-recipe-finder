@@ -36,17 +36,32 @@ export async function uploadFile(file, userId) {
       fileName: fileName,
       fileUrl: `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`
     };
+    
   } catch (error) {
     console.error('S3 Upload Error:', error);
     throw new Error('Failed to upload file to S3');
   }
+  finally{
+    const duration = Date.now() - start;
+    // 1. Log the individual performance event for Splunk/Terminal
+    logPerformance(req, 'S3_UPLOAD', duration, { 
+      file_name: file.originalname,
+      bucket: BUCKET_NAME,
+      file_type: file.mimetype,
+      file_size: file.size 
+    });
+    
+    if (req.journey) {
+      req.journey.segments.s3_upload_ms = duration;
+    }
+  }
 }
 
 // Generate signed URL (valid for 1 hour)
-export async function getSignedFileUrl(fileName) {
+export async function getSignedFileUrl(fileURL) {
   const command = new GetObjectCommand({
     Bucket: BUCKET_NAME,
-    Key: fileName
+    Key: fileURL
   });
 
   try {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signIn, getCurrentUser } from 'aws-amplify/auth';
+import { signOut } from 'aws-amplify/auth';
 
 function SignInPage() {
   const [email, setEmail] = useState('');
@@ -8,6 +9,7 @@ function SignInPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const startTime = Date.now()
 
   const handleSignIn = async (e) => {
     e.preventDefault();
@@ -15,6 +17,16 @@ function SignInPage() {
     setError('');
 
     try {
+
+      // 1. Check if the "saved" session is too old
+      const lastActivity = localStorage.getItem('lastActivity');
+      const twentyMinutes = 20 * 60 * 1000; // in milliseconds
+
+      if (lastActivity && (Date.now() - parseInt(lastActivity)) > twentyMinutes) {
+        // Session is stale, clear it before attempting login
+        try { await signOut(); } catch (e) { console.log(e) }
+        localStorage.clear();
+      }
       // Sign in with Cognito
       await signIn({
         username: email,
@@ -23,21 +35,39 @@ function SignInPage() {
 
       // Get current user info
       const currentUser = await getCurrentUser();
-      
+
       // Fetch user from our database
       const response = await fetch(`/api/users/email/${email}`);
       const data = await response.json();
+
 
       if (data.success) {
         localStorage.setItem('userId', data.user.id);
         localStorage.setItem('userName', data.user.name);
         localStorage.setItem('userEmail', data.user.email);
+        console.info("✅ [AUTH_EVENT]: SIGN_IN_SUCCESS", {
+          time: new Date().toISOString(),
+          user_id: email,
+          auth_provider: 'Cognito',
+          session_start: Date.now()
+        });
         navigate('/dashboard');
       } else {
         setError('User not found in database');
       }
     } catch (err) {
       setError(err.message || 'Sign in failed');
+      console.warn("🔐 [SECURITY_EVENT]: SIGN_IN_FAILURE", {
+      time: new Date().toISOString(),
+      user_id: email,
+      error_code: error.name, // e.g., 'NotAuthorizedException'
+      message: error.message,
+      attempt_duration_ms: Date.now() - startTime,
+      client_info: {
+        ua: navigator.userAgent,
+        screen_resolution: `${window.screen.width}x${window.screen.height}`
+      }
+    })
     } finally {
       setLoading(false);
     }

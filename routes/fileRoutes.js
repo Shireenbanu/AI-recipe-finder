@@ -13,6 +13,9 @@ const upload = multer({
 });
 
 // Upload lab report
-router.post('/', upload.single('file'), fileController.uploadLabReport);
+router.post('/uploadLabReport', upload.single('file'), fileController.uploadLabReport);
+router.get('/presign',fileController.getS3PreSignedURL);
+
 
 export default router;
+

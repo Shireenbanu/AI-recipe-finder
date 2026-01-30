@@ -82,4 +82,21 @@ export function logSuspiciousFileUpload(req, file, reason) {
   });
 }
 
+export function logPerformance(req, actionName, durationMs, extraData = {}) {
+  // Capture basic user context for every performance log
+  const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  const userId = req.userContext?.id || 'anonymous';
+
+  splunkLogger.info(`PERFORMANCE_METRIC: ${actionName}`, {
+    event_type: 'performance',
+    action: actionName,
+    duration_ms: durationMs,
+    security: {
+      ip_address: clientIp,
+      user_id: userId,
+    },
+    ...extraData // Any additional info (e.g., s3_bucket_name, file_size)
+  });
+}
+
 export default splunkLogger;
