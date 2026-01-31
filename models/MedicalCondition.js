@@ -1,4 +1,5 @@
 import pool from '../config/database.js';
+import {logPerformance} from '../services/splunkLogger.js';
 
 // Get all available medical conditions
 export async function getAllMedicalConditions() {
@@ -10,15 +11,6 @@ export async function getAllMedicalConditions() {
   const result = await pool.query(query);
   return result.rows;
 }
-
-// export async function getUserMedicalConditions(userId) {
-//   const query = `
-//   select * from medical_conditions where medical_conditions in
-//   (select medical_conditions from user_medical_conditions 
-//   where user_id = $1); `
-//   const result = await pool.query(query, [userId]);
-//   return result.rows;
-// }
 
 // Get medical condition by ID
 export async function getMedicalConditionById(conditionId) {

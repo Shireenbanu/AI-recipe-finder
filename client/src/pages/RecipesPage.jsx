@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authFetch } from '../../services/apiClient.js';
 
 function RecipesPage() {
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ function RecipesPage() {
 
   const fetchRecommendations = async () => {
     try {
-      const response = await fetch(`/api/recipes/recommendations?userId=${userId}`);
+      const response = await authFetch(`/api/recipes/recommendations?userId=${userId}`);
       const data = await response.json();
       
       if (data.success) {
@@ -38,7 +39,7 @@ function RecipesPage() {
 
     setSearchLoading(true);
     try {
-      const response = await fetch(`/api/recipes/search?q=${encodeURIComponent(searchQuery)}`);
+      const response = await authFetch(`/api/recipes/search?q=${encodeURIComponent(searchQuery)}`);
       const data = await response.json();
       
       if (data.success) {

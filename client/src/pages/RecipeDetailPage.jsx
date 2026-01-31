@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
+import { authFetch } from '../../services/apiClient.js';
 
 function RecipeDetailPage() {
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ function RecipeDetailPage() {
 
   const fetchRecipe = async () => {
     try {
-      const response = await fetch(`/api/recipes/${recipeId}?userId=${userId}`);
+      const response = await authFetch(`/api/recipes/${recipeId}?userId=${userId}`);
       const data = await response.json();
       
       if (data.success) {
@@ -41,7 +42,7 @@ function RecipeDetailPage() {
     setChatLoading(true);
 
     try {
-      const response = await fetch('/api/chat', {
+      const response = await authFetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
