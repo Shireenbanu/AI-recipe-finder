@@ -156,13 +156,15 @@ export async function getUserNutritionalNeeds(userId) {
       if (newPriority > currentPriority) {
         aggregatedNeeds[nutrient] = level;
       }
+      
     });
   });
   
   return {
     conditions: conditions.map(c => ({
       name: c.condition_name,
-      severity: c.severity
+      severity: c.severity, 
+      conditionId: c.condition_id
     })),
     nutritionalNeeds: aggregatedNeeds
   };
