@@ -1,74 +1,83 @@
 import * as Recipe from '../models/Recipe.js';
 import * as User from '../models/User.js';
 import * as LLMService from '../services/llmService.js';
+import { logPerformance } from '../services/splunkLogger.js';
+
+// Consistent helper for all asynchronous operations
+const trackRDS = async (req, action, taskFn, extraData = {}) => {
+  const startTime = Date.now();
+  try {
+    const result = await taskFn();
+    logPerformance(req, `RDS_${action}_SUCCESS`, Date.now() - startTime, extraData);
+    return result;
+  } catch (error) {
+    logPerformance(req, `RDS_${action}_ERROR`, Date.now() - startTime, { 
+      error: error.message,
+      ...extraData 
+    });
+    throw error;
+  }
+};
 
 // Get personalized recipe recommendations
 export async function getRecommendations(req, res) {
   try {
     const { userId } = req.query;
+    if (!userId) return res.status(400).json({ success: false, error: 'User ID is required' });
 
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        error: 'User ID is required'
-      });
-    }
-
-    // Get user's nutritional needs
-    const { conditions, nutritionalNeeds } = await User.getUserNutritionalNeeds(userId);
+    // 1. Get nutritional needs
+    const { conditions, nutritionalNeeds } = await trackRDS(req, 'READ_USER_NEEDS', () => 
+      User.getUserNutritionalNeeds(userId)
+    );
 
     if (conditions.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'User has no medical conditions set. Please add medical conditions first.'
+        error: 'User has no medical conditions set.'
       });
     }
 
-    // Check if we have existing recipes that match
-    let recipes = await Recipe.getRecipesByNutrients(nutritionalNeeds);
+    // 2. Check existing recipes
+    let recipes = await trackRDS(req, 'READ_EXISTING_RECIPES', () => 
+      Recipe.getRecipesByNutrients(nutritionalNeeds)
+    );
 
-    // If we don't have enough recipes, generate new ones
+    // 3. Generate via LLM if pool is small
     if (recipes.length < 5) {
-      console.log('Generating new recipes with LLM...');
-      const newRecipes = await LLMService.generateRecipes(nutritionalNeeds, conditions, 5);
+        LLMService.generateRecipes(nutritionalNeeds, conditions, 5, req)
+     
 
-      // Save new recipes to database
       for (const recipeData of newRecipes) {
         try {
-          const savedRecipe = await Recipe.createRecipe({
-            title: recipeData.title,
-            description: recipeData.description,
-            ingredients: recipeData.ingredients,
-            instructions: recipeData.instructions,
-            nutritionalInfo: recipeData.nutritional_info,
-            prepTime: recipeData.prep_time,
-            cookTime: recipeData.cook_time,
-            servings: recipeData.servings,
-            difficulty: recipeData.difficulty,
-            tags: recipeData.tags
-          });
+          const savedRecipe = await trackRDS(req, 'WRITE_CREATE_RECIPE', () => 
+            Recipe.createRecipe({
+              title: recipeData.title,
+              description: recipeData.description,
+              ingredients: recipeData.ingredients,
+              instructions: recipeData.instructions,
+              nutritionalInfo: recipeData.nutritional_info,
+              prepTime: recipeData.prep_time,
+              cookTime: recipeData.cook_time,
+              servings: recipeData.servings,
+              difficulty: recipeData.difficulty,
+              tags: recipeData.tags
+            })
+          );
 
           recipes.push(savedRecipe);
 
-
-
-          await Recipe.logRecommendation(
-            userId,
-            savedRecipe.id,
-            conditions.map(c => c.name),
+          await trackRDS(req, 'WRITE_LOG_RECOMMENDATION', () => 
+            Recipe.logRecommendation(userId, savedRecipe.id, conditions.map(c => c.name))
           );
         } catch (error) {
-          console.error('Error saving recipe:', error);
+          // Error already logged by trackRDS wrapper
         }
       }
     } else {
-      // Log existing recipe recommendations
+      // Log existing recommendations
       for (const recipe of recipes.slice(0, 5)) {
-
-        await Recipe.logRecommendation(
-          userId,
-          recipe.id,
-          conditions.map(c => c.name),
+        await trackRDS(req, 'WRITE_LOG_EXISTING_REC', () => 
+          Recipe.logRecommendation(userId, recipe.id, conditions.map(c => c.name))
         );
       }
     }
@@ -80,11 +89,7 @@ export async function getRecommendations(req, res) {
       nutritionalNeeds
     });
   } catch (error) {
-    console.error('Error getting recommendations:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get recipe recommendations'
-    });
+    res.status(500).json({ success: false, error: 'Failed to get recommendations' });
   }
 }
 
@@ -94,34 +99,17 @@ export async function getRecipe(req, res) {
     const { recipeId } = req.params;
     const { userId } = req.query;
 
-    const recipe = await Recipe.getRecipeById(recipeId);
+    const recipe = await trackRDS(req, 'READ_RECIPE_BY_ID', () => Recipe.getRecipeById(recipeId));
+    if (!recipe) return res.status(404).json({ success: false, error: 'Recipe not found' });
 
-    if (!recipe) {
-      return res.status(404).json({
-        success: false,
-        error: 'Recipe not found'
-      });
-    }
-
-    // Check if favorited (if userId provided)
     let isFavorited = false;
     if (userId) {
-      isFavorited = await Recipe.isFavorited(userId, recipeId);
+      isFavorited = await trackRDS(req, 'READ_CHECK_FAVORITE', () => Recipe.isFavorited(userId, recipeId));
     }
 
-    res.json({
-      success: true,
-      recipe: {
-        ...recipe,
-        isFavorited
-      }
-    });
+    res.json({ success: true, recipe: { ...recipe, isFavorited } });
   } catch (error) {
-    console.error('Error fetching recipe:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch recipe'
-    });
+    res.status(500).json({ success: false, error: 'Failed to fetch recipe' });
   }
 }
 
@@ -129,29 +117,20 @@ export async function getRecipe(req, res) {
 export async function searchRecipes(req, res) {
   try {
     const { q, tags, limit } = req.query;
-
     let recipes;
 
     if (tags) {
       const tagArray = tags.split(',').map(t => t.trim());
-      recipes = await Recipe.getRecipesByTags(tagArray);
+      recipes = await trackRDS(req, 'READ_SEARCH_TAGS', () => Recipe.getRecipesByTags(tagArray));
     } else if (q) {
-      recipes = await Recipe.searchRecipes(q, limit || 20);
+      recipes = await trackRDS(req, 'READ_SEARCH_QUERY', () => Recipe.searchRecipes(q, limit || 20));
     } else {
-      recipes = await Recipe.getAllRecipes(limit || 20);
+      recipes = await trackRDS(req, 'READ_ALL_RECIPES', () => Recipe.getAllRecipes(limit || 20));
     }
 
-    res.json({
-      success: true,
-      recipes,
-      count: recipes.length
-    });
+    res.json({ success: true, recipes, count: recipes.length });
   } catch (error) {
-    console.error('Error searching recipes:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to search recipes'
-    });
+    res.status(500).json({ success: false, error: 'Failed to search recipes' });
   }
 }
 
@@ -159,35 +138,15 @@ export async function searchRecipes(req, res) {
 export async function addFavorite(req, res) {
   try {
     const { userId, recipeId } = req.body;
+    if (!userId || !recipeId) return res.status(400).json({ success: false, error: 'IDs required' });
 
-    if (!userId || !recipeId) {
-      return res.status(400).json({
-        success: false,
-        error: 'User ID and Recipe ID are required'
-      });
-    }
+    const recipe = await trackRDS(req, 'READ_VERIFY_FOR_FAVORITE', () => Recipe.getRecipeById(recipeId));
+    if (!recipe) return res.status(404).json({ success: false, error: 'Recipe not found' });
 
-    // Verify recipe exists
-    const recipe = await Recipe.getRecipeById(recipeId);
-    if (!recipe) {
-      return res.status(404).json({
-        success: false,
-        error: 'Recipe not found'
-      });
-    }
-
-    const favorite = await Recipe.addToFavorites(userId, recipeId);
-
-    res.status(201).json({
-      success: true,
-      favorite
-    });
+    const favorite = await trackRDS(req, 'WRITE_ADD_FAVORITE', () => Recipe.addToFavorites(userId, recipeId));
+    res.status(201).json({ success: true, favorite });
   } catch (error) {
-    console.error('Error adding favorite:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to add favorite'
-    });
+    res.status(500).json({ success: false, error: 'Failed to add favorite' });
   }
 }
 
@@ -195,26 +154,12 @@ export async function addFavorite(req, res) {
 export async function removeFavorite(req, res) {
   try {
     const { userId, recipeId } = req.params;
+    const removed = await trackRDS(req, 'WRITE_REMOVE_FAVORITE', () => Recipe.removeFromFavorites(userId, recipeId));
+    if (!removed) return res.status(404).json({ success: false, error: 'Favorite not found' });
 
-    const removed = await Recipe.removeFromFavorites(userId, recipeId);
-
-    if (!removed) {
-      return res.status(404).json({
-        success: false,
-        error: 'Favorite not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Recipe removed from favorites'
-    });
+    res.json({ success: true, message: 'Recipe removed' });
   } catch (error) {
-    console.error('Error removing favorite:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to remove favorite'
-    });
+    res.status(500).json({ success: false, error: 'Failed to remove favorite' });
   }
 }
 
@@ -222,19 +167,9 @@ export async function removeFavorite(req, res) {
 export async function getFavorites(req, res) {
   try {
     const { userId } = req.params;
-
-    const favorites = await Recipe.getUserFavorites(userId);
-
-    res.json({
-      success: true,
-      favorites,
-      count: favorites.length
-    });
+    const favorites = await trackRDS(req, 'READ_USER_FAVORITES', () => Recipe.getUserFavorites(userId));
+    res.json({ success: true, favorites, count: favorites.length });
   } catch (error) {
-    console.error('Error fetching favorites:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch favorites'
-    });
+    res.status(500).json({ success: false, error: 'Failed to fetch favorites' });
   }
 }

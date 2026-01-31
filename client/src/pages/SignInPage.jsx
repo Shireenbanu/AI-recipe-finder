@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signIn, getCurrentUser } from 'aws-amplify/auth';
 import { signOut } from 'aws-amplify/auth';
+import { authFetch } from '../../services/apiClient.js';
 
 function SignInPage() {
   const [email, setEmail] = useState('');
@@ -37,7 +38,7 @@ function SignInPage() {
       const currentUser = await getCurrentUser();
 
       // Fetch user from our database
-      const response = await fetch(`/api/users/email/${email}`);
+      const response = await authFetch(`/api/users/email/${email}`);
       const data = await response.json();
 
 

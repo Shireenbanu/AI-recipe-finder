@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authFetch } from '../../services/apiClient.js';
 
 function ProfilePage() {
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ function ProfilePage() {
 
   const fetchProfile = async () => {
     try {
-      const response = await fetch(`/api/users/${userId}`);
+      const response = await authFetch(`/api/users/${userId}`);
       const data = await response.json();
       
       if (data.success) {
@@ -40,7 +41,7 @@ function ProfilePage() {
     e.preventDefault();
     
     try {
-      const response = await fetch(`/api/users/${userId}`, {
+      const response = await authFetch(`/api/users/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)

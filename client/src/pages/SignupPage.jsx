@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signUp, confirmSignUp } from 'aws-amplify/auth';
+import { authFetch } from '../../services/apiClient.js';
 
 function SignupPage() {
   const [step, setStep] = useState('signup'); // 'signup' or 'confirm'
@@ -48,7 +49,7 @@ function SignupPage() {
       });
 
       // Create user in our database
-      const response = await fetch('/api/users', {
+      const response = await authFetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

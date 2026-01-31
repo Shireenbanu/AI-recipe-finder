@@ -1,120 +1,120 @@
 import * as User from '../models/User.js';
 import * as MedicalCondition from '../models/MedicalCondition.js';
+import { trackRDS, logPerformance } from '../services/splunkLogger.js';
 
-// Create new user
 export async function createUser(req, res) {
   try {
     const { email, name } = req.body;
+    if (!email || !name) return res.status(400).json({ success: false, error: 'Email and name required' });
 
-    // Validate input
-    if (!email || !name) {
-      return res.status(400).json({
-        success: false,
-        error: 'Email and name are required'
-      });
-    }
+    const existingUser = await trackRDS(req, 'READ_USER_EXISTENCE', () => User.getUserByEmail(email));
+    if (existingUser) return res.status(409).json({ success: false, error: 'User already exists' });
 
-    // Check if user already exists
-    const existingUser = await User.getUserByEmail(email);
-    if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        error: 'User with this email already exists'
-      });
-    }
+    const user = await trackRDS(req, 'WRITE_CREATE_USER', () => User.createUser(email, name));
+    res.status(201).json({ success: true, user });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to create user' });
+  }
+}
 
-    // Create user
-    const user = await User.createUser(email, name);
+// Get user's medical conditions
+export async function getUserConditions(req, res) {
+  try {
+    const { userId } = req.params;
 
-    res.status(201).json({
+    // We categorize this as a READ action
+    const conditions = await trackRDS(req, 'READ_USER_CONDITIONS', () => 
+      User.getUserMedicalConditions(userId)
+    );
+
+    res.json({
       success: true,
-      user
+      conditions
     });
   } catch (error) {
-    console.error('Error creating user:', error);
+    console.error('Error fetching user conditions:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to create user'
+      error: 'Failed to fetch medical conditions'
     });
   }
 }
 
-export async function getUserByEmail(req, res){
-  try {
-    const { email } = req.params;
-    const user = await User.getUserByEmail(email);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      user
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Failed to find user'
-    });
-  }
-};
-
-
-export async function listUserReports(req,res){
-
+// Get user's nutritional needs
+export async function getNutritionalNeeds(req, res) {
   try {
     const { userId } = req.params;
 
-    const result = await User.getUserLabReports(userId);
-    console.log(result)
+    // We categorize this as a READ action
+    const needs = await trackRDS(req, 'READ_USER_NUTRITIONAL_NEEDS', () => 
+      User.getUserNutritionalNeeds(userId)
+    );
 
-    if (result.length === 0) {
-      return res.status(404).json({ success: false, error: 'User not found' });
-    }
-
-
-    res.json({ success: true, files : result });
-    
+    res.json({
+      success: true,
+      ...needs
+    });
   } catch (error) {
-    console.error('Database Error:', error);
+    console.error('Error fetching nutritional needs:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch nutritional needs'
+    });
+  }
+}
+
+export async function getUserByEmail(req, res) {
+  try {
+    const { email } = req.params;
+    const user = await trackRDS(req, 'READ_USER_BY_EMAIL', () => User.getUserByEmail(email));
+    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+    res.json({ success: true, user });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to find user' });
+  }
+}
+
+export async function listUserReports(req, res) {
+  try {
+    const { userId } = req.params;
+    const result = await trackRDS(req, 'READ_USER_REPORTS', () => User.getUserLabReports(userId));
+
+    if (!result) return res.status(404).json({ success: false, error: 'User not found' });
+    res.json({ success: true, files: result });
+  } catch (error) {
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
-};
+}
 
-// Get user profile
 export async function getUserProfile(req, res) {
   try {
     const { userId } = req.params;
+    const user = await trackRDS(req, 'READ_USER_PROFILE', () => User.getUserById(userId));
+    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
-    const user = await User.getUserById(userId);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      });
-    }
-
-    // Get user's medical conditions
-    const conditions = await User.getUserMedicalConditions(userId);
-
-    res.json({
-      success: true,
-      user: {
-        ...user,
-        medicalConditions: conditions
-      }
-    });
+    const conditions = await trackRDS(req, 'READ_USER_CONDITIONS_PROFILE', () => User.getUserMedicalConditions(userId));
+    res.json({ success: true, user: { ...user, medicalConditions: conditions } });
   } catch (error) {
-    console.error('Error fetching user profile:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch user profile'
-    });
+    res.status(500).json({ success: false, error: 'Failed to fetch user profile' });
+  }
+}
+
+export async function addMedicalCondition(req, res) {
+  try {
+    const { userId } = req.params;
+    const { conditionId, severity, notes } = req.body;
+
+    const condition = await trackRDS(req, 'READ_VERIFY_CONDITION', () => MedicalCondition.getMedicalConditionById(conditionId));
+    if (!condition) return res.status(404).json({ success: false, error: 'Medical condition not found' });
+
+    const userCondition = await trackRDS(req, 'WRITE_ADD_USER_CONDITION', () => 
+      User.addUserMedicalCondition(userId, conditionId, severity || 'moderate', notes)
+    );
+
+    res.status(201).json({ success: true, userCondition });
+  } catch (error) {
+    if (error.code === '23505') return res.status(409).json({ success: false, error: 'User already has this condition' });
+    res.status(500).json({ success: false, error: 'Failed to add medical condition' });
   }
 }
 
@@ -124,7 +124,10 @@ export async function updateUserProfile(req, res) {
     const { userId } = req.params;
     const updates = req.body;
 
-    const updatedUser = await User.updateUser(userId, updates);
+    // We categorize this as a WRITE action for Splunk tracking
+    const updatedUser = await trackRDS(req, 'WRITE_UPDATE_USER_PROFILE', () => 
+      User.updateUser(userId, updates)
+    );
 
     if (!updatedUser) {
       return res.status(404).json({
@@ -146,120 +149,14 @@ export async function updateUserProfile(req, res) {
   }
 }
 
-// Add medical condition to user
-export async function addMedicalCondition(req, res) {
-  try {
-    const { userId } = req.params;
-    const { conditionId, severity, notes } = req.body;
-
-    if (!conditionId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Condition ID is required'
-      });
-    }
-
-    // Verify condition exists
-    const condition = await MedicalCondition.getMedicalConditionById(conditionId);
-    if (!condition) {
-      return res.status(404).json({
-        success: false,
-        error: 'Medical condition not found'
-      });
-    }
-
-    // Add condition to user
-    const userCondition = await User.addUserMedicalCondition(
-      userId,
-      conditionId,
-      severity || 'moderate',
-      notes
-    );
-
-    res.status(201).json({
-      success: true,
-      userCondition
-    });
-  } catch (error) {
-    console.error('Error adding medical condition:', error);
-    
-    // Handle duplicate condition
-    if (error.code === '23505') {
-      return res.status(409).json({
-        success: false,
-        error: 'User already has this medical condition'
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      error: 'Failed to add medical condition'
-    });
-  }
-}
-
-// Get user's medical conditions
-export async function getUserConditions(req, res) {
-  try {
-    const { userId } = req.params;
-
-    const conditions = await User.getUserMedicalConditions(userId);
-
-    res.json({
-      success: true,
-      conditions
-    });
-  } catch (error) {
-    console.error('Error fetching user conditions:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch medical conditions'
-    });
-  }
-}
-
-// Remove medical condition from user
 export async function removeMedicalCondition(req, res) {
   try {
     const { userId, conditionId } = req.params;
-
-    const removed = await User.removeUserMedicalCondition(userId, conditionId);
-
-    if (!removed) {
-      return res.status(404).json({
-        success: false,
-        error: 'Medical condition not found for this user'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Medical condition removed successfully'
-    });
+    const removed = await trackRDS(req, 'WRITE_REMOVE_USER_CONDITION', () => User.removeUserMedicalCondition(userId, conditionId));
+    
+    if (!removed) return res.status(404).json({ success: false, error: 'Condition not found for this user' });
+    res.json({ success: true, message: 'Removed successfully' });
   } catch (error) {
-    console.error('Error removing medical condition:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to remove medical condition'
-    });
-  }
-}
-
-// Get user's nutritional needs
-export async function getNutritionalNeeds(req, res) {
-  try {
-    const { userId } = req.params;
-
-    const needs = await User.getUserNutritionalNeeds(userId);
-    res.json({
-      success: true,
-      ...needs
-    });
-  } catch (error) {
-    console.error('Error fetching nutritional needs:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch nutritional needs'
-    });
+    res.status(500).json({ success: false, error: 'Failed to remove condition' });
   }
 }

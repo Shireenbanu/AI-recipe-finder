@@ -99,4 +99,17 @@ export function logPerformance(req, actionName, durationMs, extraData = {}) {
   });
 }
 
+// Helper to wrap DB calls with performance logging
+  export async function trackRDS(req, action, taskFn){
+  const startTime = Date.now();
+  try {
+    const result = await taskFn();
+    logPerformance(req, `RDS_${action}_SUCCESS`, Date.now() - startTime);
+    return result;
+  } catch (error) {
+    logPerformance(req, `RDS_${action}_ERROR`, Date.now() - startTime, { error: error.message });
+    throw error;
+  }
+};
+
 export default splunkLogger;
