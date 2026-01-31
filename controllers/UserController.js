@@ -251,7 +251,6 @@ export async function getNutritionalNeeds(req, res) {
     const { userId } = req.params;
 
     const needs = await User.getUserNutritionalNeeds(userId);
-
     res.json({
       success: true,
       ...needs

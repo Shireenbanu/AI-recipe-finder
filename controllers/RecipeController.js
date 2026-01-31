@@ -50,12 +50,7 @@ export async function getRecommendations(req, res) {
 
           recipes.push(savedRecipe);
 
-          // Generate and log recommendation reasoning
-        //   const reasoning = await LLMService.generateRecommendationReasoning(
-        //     savedRecipe,
-        //     conditions,
-        //     nutritionalNeeds
-        //   );
+
 
           await Recipe.logRecommendation(
             userId,

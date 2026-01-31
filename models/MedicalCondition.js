@@ -6,10 +6,19 @@ export async function getAllMedicalConditions() {
     SELECT * FROM medical_conditions
     ORDER BY name ASC
   `;
-  
+
   const result = await pool.query(query);
   return result.rows;
 }
+
+// export async function getUserMedicalConditions(userId) {
+//   const query = `
+//   select * from medical_conditions where medical_conditions in
+//   (select medical_conditions from user_medical_conditions 
+//   where user_id = $1); `
+//   const result = await pool.query(query, [userId]);
+//   return result.rows;
+// }
 
 // Get medical condition by ID
 export async function getMedicalConditionById(conditionId) {
@@ -17,7 +26,7 @@ export async function getMedicalConditionById(conditionId) {
     SELECT * FROM medical_conditions
     WHERE id = $1
   `;
-  
+
   const result = await pool.query(query, [conditionId]);
   return result.rows[0];
 }
