@@ -95,6 +95,7 @@ export function logPerformance(req, actionName, durationMs, extraData = {}) {
       ip_address: clientIp,
       user_id: userId,
     },
+    session_id: req.sessionID || req.headers['x-session-id'] || "no-session",
     ...extraData // Any additional info (e.g., s3_bucket_name, file_size)
   });
 }

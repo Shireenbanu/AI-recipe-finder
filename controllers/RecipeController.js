@@ -121,11 +121,21 @@ export async function searchRecipes(req, res) {
 
     if (tags) {
       const tagArray = tags.split(',').map(t => t.trim());
-      recipes = await trackRDS(req, 'READ_SEARCH_TAGS', () => Recipe.getRecipesByTags(tagArray));
+      // Log the specific tags used in the search
+      recipes = await trackRDS(req, 'READ_SEARCH_TAGS', () => Recipe.getRecipesByTags(tagArray), {
+        search_tags: tagArray,
+        result_limit: limit || 20
+      });
     } else if (q) {
-      recipes = await trackRDS(req, 'READ_SEARCH_QUERY', () => Recipe.searchRecipes(q, limit || 20));
+      // Log the text query string
+      recipes = await trackRDS(req, 'READ_SEARCH_QUERY', () => Recipe.searchRecipes(q, limit || 20), {
+        search_query: q,
+        result_limit: limit || 20
+      });
     } else {
-      recipes = await trackRDS(req, 'READ_ALL_RECIPES', () => Recipe.getAllRecipes(limit || 20));
+      recipes = await trackRDS(req, 'READ_ALL_RECIPES', () => Recipe.getAllRecipes(limit || 20), {
+        is_browse_all: true
+      });
     }
 
     res.json({ success: true, recipes, count: recipes.length });
