@@ -2,82 +2,66 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { logPerformance } from './splunkLogger.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const LLMVersion = "gemini-2.0-flash"
-const model = genAI.getGenerativeModel({
-  model: LLMVersion,
-  generationConfig: { responseMimeType: "application/json" }
-});
+
+// Fallback Chain: 2.0 -> 1.5 (More resilient)
+const MODELS = [
+  "gemini-2.0-flash",       // Try 2.0 first
+  "gemini-2.5-flash-lite",  // Better fallback: very high limits, ultra-fast
+  "gemini-2.5-flash"        // Final fallback
+];
 
 export async function generateRecipes(nutritionalNeeds, conditions, count = 2, req) {
   const startTime = Date.now();
+  let lastError = null;
 
-  try {
-    const conditionNames = conditions.map(c => c.name).join(', ');
-    const nutrientList = Object.entries(nutritionalNeeds)
-      .map(([n, l]) => `${n} (${l})`).join(', ');
+  // 1. TOKEN MINIMIZATION: Clean the data before it hits the prompt
+  // Only send the names of conditions and essential nutrient values
+  const compactConditions = conditions.map(c => c.name).join(',');
+  const compactNutrients = JSON.stringify(nutritionalNeeds);
 
-    const prompt = `Generate ${count} recipes for: ${conditionNames}. Needs: ${nutrientList}...`; // Your existing prompt
+  // Short, instruction-heavy prompt to save input tokens
+  const prompt = `JSON ONLY. Array of ${count} recipes for conditions: ${compactConditions}. Nutrients: ${compactNutrients}. Schema: {title,ingredients[],instructions[],nutritional_info:{calories,protein}}`;
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
-    const usage = result.response.usageMetadata;
-    const tokensProcessed = usage?.totalTokenCount || 0;
-    // Cleaning and Parsing
-    let cleanedText = responseText.trim().replace(/```json\n?/g, '').replace(/```\n?/g, '');
-    const recipes = JSON.parse(cleanedText.substring(cleanedText.indexOf('['), cleanedText.lastIndexOf(']') + 1));
+  for (const modelName of MODELS) {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        generationConfig: { 
+          responseMimeType: "application/json",
+          maxOutputTokens: 4000 // Limit output to prevent runaway costs/latency
+        }
+      });
 
-    // Log Performance on Success
-    logPerformance(req, 'GEMINI_API', Date.now() - startTime, {
-      recipe_count: recipes.length,
-      tokens_processed: tokensProcessed,
-      condition_count: conditions.length,
-      prompt_tokens: usage?.promptTokenCount,
-      completion_tokens: usage?.candidatesTokenCount,
-      model_used: LLMVersion
-    });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const recipes = JSON.parse(response.text());
+      console.log(recipes)
 
-    return recipes;
+      logPerformance(req, 'GEMINI_API_SUCCESS', Date.now() - startTime, {
+        model_used: modelName,
+        recipe_count: recipes.length,
+        tokens: response.usageMetadata?.totalTokenCount
+      });
 
-  } catch (error) {
-    // Log Performance on Failure
-    logPerformance(req, 'GEMINI_API', Date.now() - startTime, {
-      error: error.message,
-      status: 'failed',
-      model_used: LLMVersion
-    });
-    throw error;
+      return recipes;
+
+    } catch (error) {
+      lastError = error;
+      const isRateLimit = error.message?.includes('429') || error.message?.includes('Quota');
+      
+      if (isRateLimit) {
+        console.warn(`Model ${modelName} rate limited. Trying next in chain...`);
+        continue; // Move to the next model in the MODELS array
+      }
+      
+      // If it's a different error (like 400 Bad Request), don't bother retrying
+      break;
+    }
   }
-}
 
-// Not being used anywhere
-export async function getCookingAssistance(messages, recipeContext, req) {
-  const startTime = Date.now();
-  const chatModel = genAI.getGenerativeModel({
-    model: LLMVersion,
-    systemInstruction: `You are a chef for: ${recipeContext.title}...`
+  // If we get here, all models failed
+  logPerformance(req, 'GEMINI_API_TOTAL_FAILURE', Date.now() - startTime, {
+    error: lastError?.message
   });
-
-  try {
-    const history = messages.slice(0, -1).map(m => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }]
-    }));
-
-    const chat = chatModel.startChat({ history });
-    const result = await chat.sendMessage(messages[messages.length - 1].content);
-    const aiResponse = result.response.text();
-
-    logPerformance(req, 'COOKING_ASSISTANCE_SUCCESS', Date.now() - startTime, {
-      recipe_id: recipeContext.id || 'unknown',
-      message_count: messages.length
-    });
-
-    return { role: 'assistant', content: aiResponse };
-
-  } catch (error) {
-    logPerformance(req, 'COOKING_ASSISTANCE_ERROR', Date.now() - startTime, {
-      error: error.message
-    });
-    throw error;
-  }
+  throw lastError;
 }

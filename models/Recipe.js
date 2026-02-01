@@ -168,11 +168,10 @@ export async function isFavorited(userId, recipeId) {
 // Log recipe recommendation
 export async function logRecommendation(userId, recipeId, matchedConditions) {
   const query = `
-    INSERT INTO recipe_recommendations (user_id, recipe_id, matched_conditions)
+    INSERT INTO recipe_recommendation–s (user_id, recipe_id, matched_conditions)
     VALUES ($1, $2, $3)
     RETURNING *
   `;
-
   const result = await pool.query(query, [
     userId,
     recipeId,
