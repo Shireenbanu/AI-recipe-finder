@@ -37,6 +37,7 @@ COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/services ./services
 COPY --from=builder /app/models ./models
 COPY --from=builder /app/config ./config
+COPY --from=builder /app/middlewares ./middlewares
 
 # COPY . .
 
