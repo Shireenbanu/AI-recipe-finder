@@ -11,9 +11,9 @@ const trackRDS = async (req, action, taskFn, extraData = {}) => {
     logPerformance(req, `RDS_${action}_SUCCESS`, Date.now() - startTime, extraData);
     return result;
   } catch (error) {
-    logPerformance(req, `RDS_${action}_ERROR`, Date.now() - startTime, { 
+    logPerformance(req, `RDS_${action}_ERROR`, Date.now() - startTime, {
       error: error.message,
-      ...extraData 
+      ...extraData
     });
     throw error;
   }
@@ -38,35 +38,35 @@ export async function getRecommendations(req, res) {
     }
 
     // 2. Check existing recipes
-    let recipes = await trackRDS(req, 'READ_EXISTING_RECIPES', () => 
+    let recipes = await trackRDS(req, 'READ_EXISTING_RECIPES', () =>
       Recipe.getRecipesByNutrients(nutritionalNeeds)
     );
 
     // 3. Generate via LLM if pool is small
     if (recipes.length < 5) {
-        LLMService.generateRecipes(nutritionalNeeds, conditions, 5, req)
-     
+
+      const newRecipes = await LLMService.generateRecipes(nutritionalNeeds, conditions, 5, req);
 
       for (const recipeData of newRecipes) {
         try {
-          const savedRecipe = await trackRDS(req, 'WRITE_CREATE_RECIPE', () => 
+          const savedRecipe = await trackRDS(req, 'WRITE_CREATE_RECIPE', () =>
             Recipe.createRecipe({
               title: recipeData.title,
               description: recipeData.description,
               ingredients: recipeData.ingredients,
               instructions: recipeData.instructions,
               nutritionalInfo: recipeData.nutritional_info,
-              prepTime: recipeData.prep_time,
-              cookTime: recipeData.cook_time,
-              servings: recipeData.servings,
-              difficulty: recipeData.difficulty,
-              tags: recipeData.tags
+              prepTime: recipeData.prep_time || 15, // Default to 15 mins
+              cookTime: recipeData.cook_time || 20, // Default to 20 mins
+              servings: recipeData.servings || 2,
+              difficulty: recipeData.difficulty || 'Medium',
+              tags: recipeData.tags || ['Healthy', 'AI Generated']
             })
           );
 
           recipes.push(savedRecipe);
 
-          await trackRDS(req, 'WRITE_LOG_RECOMMENDATION', () => 
+          await trackRDS(req, 'WRITE_LOG_RECOMMENDATION', () =>
             Recipe.logRecommendation(userId, savedRecipe.id, conditions.map(c => c.name))
           );
         } catch (error) {
@@ -76,7 +76,7 @@ export async function getRecommendations(req, res) {
     } else {
       // Log existing recommendations
       for (const recipe of recipes.slice(0, 5)) {
-        await trackRDS(req, 'WRITE_LOG_EXISTING_REC', () => 
+        await trackRDS(req, 'WRITE_LOG_EXISTING_REC', () =>
           Recipe.logRecommendation(userId, recipe.id, conditions.map(c => c.name))
         );
       }

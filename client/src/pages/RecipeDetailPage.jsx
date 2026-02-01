@@ -21,7 +21,7 @@ function RecipeDetailPage() {
     try {
       const response = await authFetch(`/api/recipes/${recipeId}?userId=${userId}`);
       const data = await response.json();
-      
+      console.log('reciepe here: ', data.recipe)
       if (data.success) {
         setRecipe(data.recipe);
       }
@@ -105,7 +105,7 @@ function RecipeDetailPage() {
               {recipe.ingredients.map((ing, idx) => (
                 <li key={idx} className="flex items-center text-gray-700">
                   <div className="w-2 h-2 bg-blue-400 rounded-full mr-3"></div>
-                  <span>{ing.quantity} {ing.unit} {ing.item}</span>
+                  <span>{ing}</span>
                 </li>
               ))}
             </ul>

@@ -27,22 +27,17 @@ export const authFetch = async (url, options = {}) => {
             'Authorization': token ? `Bearer ${token}` : '',
             'x-session-id': sessionId
         };
-        // Simple helper to get/create a session ID for the browser tab
 
-
-        // 🚨 Only add JSON Content-Type if the body is NOT FormData
         if (!(options.body instanceof FormData)) {
             headers['Content-Type'] = 'application/json';
         }
-        // 2. Merge existing headers with the Authorization header
 
-        // 3. Execute the real fetch
         const response = await fetch(url, {
+            signal: AbortSignal.timeout(60000),
             ...options,
             headers: authHeaders,
         });
 
-        // 4. Handle Unauthorized (Optional: redirect to login)
         if (response.status === 401) {
             window.location.href = '/signin';
         }
