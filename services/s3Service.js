@@ -18,9 +18,6 @@ const start = Date.now()
 // Upload file to S3
 export async function uploadFile(req,file, userId) {
   const fileName = `lab-reports/${userId}/${Date.now()}-${file.originalname}`;
-  console.log(BUCKET_NAME)
-  console.log("Inside the upload block")
-console.log(req)
   const params = {
     Bucket: BUCKET_NAME,
     Key: fileName,
@@ -43,20 +40,7 @@ console.log(req)
     console.error('S3 Upload Error:', error);
     throw new Error('Failed to upload file to S3');
   }
-  finally{
-    const duration = Date.now() - start;
-    // 1. Log the individual performance event for Splunk/Terminal
-    logPerformance(req, 'S3_UPLOAD', duration, { 
-      file_name: file.originalname,
-      bucket: BUCKET_NAME,
-      file_type: file.mimetype,
-      file_size: file.size 
-    });
-    
-    if (req.journey) {
-      req.journey.segments.s3_upload_ms = duration;
-    }
-  }
+
 }
 
 // Generate signed URL (valid for 1 hour)
@@ -74,17 +58,6 @@ export async function getSignedFileUrl(req, fileKey) {
   } catch (error) {
     console.error('S3 Signed URL Error:', error);
     throw new Error('Failed to generate file URL');
-  } finally {
-    const duration = Date.now() - start;
-
-    // 1. Log the individual access event (Security + Performance)
-    logPerformance(req, 'S3_GET_SIGNED_URL', duration, { 
-      file_key: fileKey 
-    });
-
-    // 2. (Optional) If this is part of a journey, track it:
-    if (req.journey) {
-      req.journey.segments.s3_access_ms = duration;
-    }
+  
   }
 }

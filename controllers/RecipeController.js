@@ -1,23 +1,8 @@
 import * as Recipe from '../models/Recipe.js';
 import * as User from '../models/User.js';
 import * as LLMService from '../services/llmService.js';
-import { logPerformance } from '../services/splunkLogger.js';
+import { logPerformance,trackRDS } from '../services/splunkLogger.js';
 
-// Consistent helper for all asynchronous operations
-const trackRDS = async (req, action, taskFn, extraData = {}) => {
-  const startTime = Date.now();
-  try {
-    const result = await taskFn();
-    logPerformance(req, `RDS_${action}_SUCCESS`, Date.now() - startTime, extraData);
-    return result;
-  } catch (error) {
-    logPerformance(req, `RDS_${action}_ERROR`, Date.now() - startTime, {
-      error: error.message,
-      ...extraData
-    });
-    throw error;
-  }
-};
 
 // Get personalized recipe recommendations
 export async function getRecommendations(req, res) {
@@ -89,6 +74,9 @@ export async function getRecommendations(req, res) {
       nutritionalNeeds
     });
   } catch (error) {
+    logPerformance(req, 'GET_RECOMMENDATIONS_FATAL', Date.now() - startTime, 'FAILURE', { 
+      failure_remark: error.message 
+    });
     res.status(500).json({ success: false, error: 'Failed to get recommendations' });
   }
 }
@@ -109,6 +97,9 @@ export async function getRecipe(req, res) {
 
     res.json({ success: true, recipe: { ...recipe, isFavorited } });
   } catch (error) {
+    logPerformance(req, 'FETCH_RECIPES_FATAL', Date.now() - startTime, 'FAILURE', { 
+      failure_remark: error.message 
+    });
     res.status(500).json({ success: false, error: 'Failed to fetch recipe' });
   }
 }
@@ -140,6 +131,9 @@ export async function searchRecipes(req, res) {
 
     res.json({ success: true, recipes, count: recipes.length });
   } catch (error) {
+    logPerformance(req, 'SEARCH_RECIPES_FATAL', Date.now() - startTime, 'FAILURE', { 
+      failure_remark: error.message 
+    });
     res.status(500).json({ success: false, error: 'Failed to search recipes' });
   }
 }
@@ -169,6 +163,9 @@ export async function removeFavorite(req, res) {
 
     res.json({ success: true, message: 'Recipe removed' });
   } catch (error) {
+    logPerformance(req, 'FAVORITE_RECIPES_FATAL', Date.now() - startTime, 'FAILURE', { 
+      failure_remark: error.message 
+    });
     res.status(500).json({ success: false, error: 'Failed to remove favorite' });
   }
 }
@@ -180,6 +177,9 @@ export async function getFavorites(req, res) {
     const favorites = await trackRDS(req, 'READ_USER_FAVORITES', () => Recipe.getUserFavorites(userId));
     res.json({ success: true, favorites, count: favorites.length });
   } catch (error) {
+    logPerformance(req, 'FAVORITE_RECIPES_FETCH_FATAL', Date.now() - startTime, 'FAILURE', { 
+      failure_remark: error.message 
+    });
     res.status(500).json({ success: false, error: 'Failed to fetch favorites' });
   }
 }

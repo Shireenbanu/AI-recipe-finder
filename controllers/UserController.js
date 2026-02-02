@@ -77,7 +77,7 @@ export async function getUserByEmail(req, res) {
 export async function listUserReports(req, res) {
   try {
     const { userId } = req.params;
-    const result = await trackRDS(req, 'READ_USER_REPORTS', () => User.getUserLabReports(userId));
+    const result = await trackRDS(req, 'READ_USER_REPORTS_LIST', () => User.getUserLabReports(userId));
 
     if (!result) return res.status(404).json({ success: false, error: 'User not found' });
     res.json({ success: true, files: result });

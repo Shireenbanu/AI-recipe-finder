@@ -1,5 +1,5 @@
 import * as S3Service from '../services/s3Service.js';
-import { logFileUpload, logFileUploadError, logSuspiciousFileUpload } from '../services/splunkLogger.js';
+import { logFileUpload, logFileUploadError, logSuspiciousFileUpload, logPerformance } from '../services/splunkLogger.js';
 import {saveFileNameForFutureUse} from '../models/User.js'
 export async function uploadLabReport(req, res) {
   const startTime = Date.now();
@@ -69,35 +69,36 @@ export async function uploadLabReport(req, res) {
   }
 }
 
-
-
 export async function getS3PreSignedURL(req, res) {
+  const startTime = Date.now();
   const { fileURL } = req.query; 
 
   if (!fileURL) {
-    return res.status(400).json({
-      success: false,
-      message: "fileURL query parameter is required"
-    });
+    return res.status(400).json({ success: false, message: "fileURL is required" });
   }
 
-
   try {
-    const preSignedUrl = await S3Service.getSignedFileUrl(req,fileURL);
+    const preSignedUrl = await S3Service.getSignedFileUrl(req, fileURL);
     
-    console.log('Successfully generated presigned URL');
+    // Manual logPerformance for Success
+    logPerformance(req, 'S3_GENERATE_PRESIGNED_URL', Date.now() - startTime, 'SUCCESS', {
+      requested_file: fileURL
+    });
 
     return res.json({
       success: true,
       s3Url: preSignedUrl,
     });
   } catch (error) {
-    console.error('Error in getS3PreSignedURL controller:', error);
+    // Manual logPerformance for Failure
+    logPerformance(req, 'S3_GENERATE_PRESIGNED_URL', Date.now() - startTime, 'FAILURE', {
+      error: error.message,
+      requested_file: fileURL
+    });
     
     return res.status(500).json({
       success: false,
-      message: "Failed to generate download link",
-      error: error.message
+      message: "Failed to generate download link"
     });
   }
 }
