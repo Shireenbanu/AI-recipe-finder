@@ -12,13 +12,13 @@ export async function createRecipe(recipeData) {
     cookTime,
     servings,
     difficulty,
-    tags
+    nutritional_needs
   } = recipeData;
 
   const query = `
     INSERT INTO recipes (
       title, description, ingredients, instructions, 
-      nutritional_info, prep_time, cook_time, servings, difficulty, tags
+      nutritional_info, prep_time, cook_time, servings, difficulty, nutritional_needs
     )
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     RETURNING *
@@ -34,7 +34,8 @@ export async function createRecipe(recipeData) {
     cookTime,
     servings,
     difficulty,
-    JSON.stringify(tags)
+    // JSON.stringify(tags)
+    nutritional_needs
   ]);
 
   return result.rows[0];
@@ -51,42 +52,43 @@ export async function getRecipeById(recipeId) {
   return result.rows[0];
 }
 
-// Search recipes by tags
-export async function getRecipesByTags(tags) {
-  const query = `
-    SELECT * FROM recipes
-    WHERE tags @> $1
-    ORDER BY created_at DESC
-    LIMIT 20
-  `;
+// // Search recipes by tags
+// export async function getRecipesByTags(tags) {
+//   const query = `
+//     SELECT * FROM recipes
+//     WHERE tags @> $1
+//     ORDER BY created_at DESC
+//     LIMIT 20
+//   `;
 
-  const result = await pool.query(query, [JSON.stringify(tags)]);
-  return result.rows;
-}
+//   const result = await pool.query(query, [JSON.stringify(tags)]);
+//   return result.rows;
+// }
 
 // Search recipes by nutritional content
 export async function getRecipesByNutrients(nutrients) {
-  // Build a query that checks if recipe has high levels of required nutrients
+
   const nutrientConditions = Object.entries(nutrients)
     .filter(([_, level]) => level === 'high')
-    .map(([nutrient, _]) => nutrient);
+    .map(([nutrient, _]) => `%${nutrient}%`); // ADD % wildcards here!
 
   if (nutrientConditions.length === 0) {
     return [];
   }
-
+  console.log("nutrientConditions in like", nutrientConditions)
   // Get recipes that contain any of the required nutrients
   const query = `
     SELECT * FROM recipes
-    WHERE tags ?| $1
+    WHERE nutritional_needs LIKE ANY($1)
     ORDER BY created_at DESC
     LIMIT 20
   `;
 
-  const searchTags = nutrientConditions.map(n => `${n}-rich`);
-  const result = await pool.query(query, [searchTags]);
+  const result = await pool.query(query, [nutrientConditions]);
+  console.log(result)
   return result.rows;
 }
+
 
 // Get all recipes (with pagination)
 export async function getAllRecipes(limit = 20, offset = 0) {

@@ -1,6 +1,7 @@
 import * as User from '../models/User.js';
 import * as MedicalCondition from '../models/MedicalCondition.js';
 import { trackRDS, logPerformance } from '../services/splunkLogger.js';
+  const startTime = Date.now();
 
 export async function createUser(req, res) {
   try {
@@ -13,6 +14,7 @@ export async function createUser(req, res) {
     const user = await trackRDS(req, 'WRITE_CREATE_USER', () => User.createUser(email, name));
     res.status(201).json({ success: true, user });
   } catch (error) {
+    logPerformance(req, 'READ_USER_EXISTENCE_ERROR', Date.now() - startTime, 'FAILURE', { failure_remark: error.message });
     res.status(500).json({ success: false, error: 'Failed to create user' });
   }
 }
@@ -33,6 +35,7 @@ export async function getUserConditions(req, res) {
     });
   } catch (error) {
     console.error('Error fetching user conditions:', error);
+    logPerformance(req, 'READ_USER_CONDITIONS_ERROR', Date.now() - startTime, 'FAILURE', { userId });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch medical conditions'
@@ -56,6 +59,7 @@ export async function getNutritionalNeeds(req, res) {
     });
   } catch (error) {
     console.error('Error fetching nutritional needs:', error);
+    logPerformance(req, 'READ_USER_NUTRITIONAL_NEEDS_ERROR', Date.now() - startTime, 'FAILURE', { userId });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch nutritional needs'
@@ -70,6 +74,8 @@ export async function getUserByEmail(req, res) {
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
     res.json({ success: true, user });
   } catch (error) {
+        logPerformance(req, 'READ_USER_BY_EMAIL_ERROR', Date.now() - startTime, 'FAILURE', { userId });
+
     res.status(500).json({ success: false, error: 'Failed to find user' });
   }
 }
@@ -82,6 +88,7 @@ export async function listUserReports(req, res) {
     if (!result) return res.status(404).json({ success: false, error: 'User not found' });
     res.json({ success: true, files: result });
   } catch (error) {
+    logPerformance(req, 'READ_USER_REPORTS_LIST_ERROR', Date.now() - startTime, 'FAILURE', { userId });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -95,6 +102,7 @@ export async function getUserProfile(req, res) {
     const conditions = await trackRDS(req, 'READ_USER_CONDITIONS_PROFILE', () => User.getUserMedicalConditions(userId));
     res.json({ success: true, user: { ...user, medicalConditions: conditions } });
   } catch (error) {
+    logPerformance(req, 'READ_USER_PROFILE_ERROR', Date.now() - startTime, 'FAILURE', { userId });
     res.status(500).json({ success: false, error: 'Failed to fetch user profile' });
   }
 }
@@ -114,6 +122,7 @@ export async function addMedicalCondition(req, res) {
     res.status(201).json({ success: true, userCondition });
   } catch (error) {
     if (error.code === '23505') return res.status(409).json({ success: false, error: 'User already has this condition' });
+    logPerformance(req, 'ADD_MEDICAL_CONDITION_ERROR', Date.now() - startTime, status, { failure_remark: error.message });
     res.status(500).json({ success: false, error: 'Failed to add medical condition' });
   }
 }
@@ -142,6 +151,7 @@ export async function updateUserProfile(req, res) {
     });
   } catch (error) {
     console.error('Error updating user:', error);
+    logPerformance(req, 'WRITE_UPDATE_USER_PROFILE_ERROR', Date.now() - startTime, 'FAILURE', { userId });
     res.status(500).json({
       success: false,
       error: 'Failed to update user'
@@ -157,6 +167,8 @@ export async function removeMedicalCondition(req, res) {
     if (!removed) return res.status(404).json({ success: false, error: 'Condition not found for this user' });
     res.json({ success: true, message: 'Removed successfully' });
   } catch (error) {
+        logPerformance(req, 'WRITE_REMOVE_USER_CONDITION_ERROR', Date.now() - startTime, 'FAILURE', { userId });
+
     res.status(500).json({ success: false, error: 'Failed to remove condition' });
   }
 }
