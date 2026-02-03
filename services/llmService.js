@@ -37,7 +37,7 @@ export async function generateRecipes(nutritionalNeeds, conditions, count = 2, r
       const recipes = JSON.parse(response.text());
       console.log(recipes)
 
-      logPerformance(req, 'GEMINI_API_SUCCESS', Date.now() - startTime, {
+      logPerformance(req, 'GEMINI_API_SUCCESS', Date.now() - startTime,'SUCCESS', {
         model_used: modelName,
         recipe_count: recipes.length,
         tokens: response.usageMetadata?.totalTokenCount
@@ -60,7 +60,7 @@ export async function generateRecipes(nutritionalNeeds, conditions, count = 2, r
   }
 
   // If we get here, all models failed
-  logPerformance(req, 'GEMINI_API_TOTAL_FAILURE', Date.now() - startTime, {
+  logPerformance(req, 'GEMINI_API_TOTAL_FAILURE', Date.now() - startTime,'FAILURE', {
     error: lastError?.message
   });
   throw lastError;
