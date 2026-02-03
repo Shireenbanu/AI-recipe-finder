@@ -1,7 +1,8 @@
 import * as Recipe from '../models/Recipe.js';
 import * as User from '../models/User.js';
 import * as LLMService from '../services/llmService.js';
-import { logPerformance,trackRDS } from '../services/splunkLogger.js';
+import { logPerformance, trackRDS } from '../services/splunkLogger.js';
+const startTime = Date.now();
 
 
 // Get personalized recipe recommendations
@@ -11,7 +12,7 @@ export async function getRecommendations(req, res) {
     if (!userId) return res.status(400).json({ success: false, error: 'User ID is required' });
 
     // 1. Get nutritional needs
-    const { conditions, nutritionalNeeds } = await trackRDS(req, 'READ_USER_NEEDS', () => 
+    const { conditions, nutritionalNeeds } = await trackRDS(req, 'READ_USER_NEEDS', () =>
       User.getUserNutritionalNeeds(userId)
     );
 
@@ -26,12 +27,16 @@ export async function getRecommendations(req, res) {
     let recipes = await trackRDS(req, 'READ_EXISTING_RECIPES', () =>
       Recipe.getRecipesByNutrients(nutritionalNeeds)
     );
-
     // 3. Generate via LLM if pool is small
-    if (recipes.length < 5) {
+    console.log("Recipes found", recipes)
+    const highNeedsKeys = Object.entries(nutritionalNeeds)
+      .filter(([key, value]) => value === 'high')
+      .map(([key, value]) => key);
+
+    if (recipes.length < 3) {
 
       const newRecipes = await LLMService.generateRecipes(nutritionalNeeds, conditions, 5, req);
-
+   
       for (const recipeData of newRecipes) {
         try {
           const savedRecipe = await trackRDS(req, 'WRITE_CREATE_RECIPE', () =>
@@ -45,7 +50,7 @@ export async function getRecommendations(req, res) {
               cookTime: recipeData.cook_time || 20, // Default to 20 mins
               servings: recipeData.servings || 2,
               difficulty: recipeData.difficulty || 'Medium',
-              tags: recipeData.tags || ['Healthy', 'AI Generated']
+              nutritional_needs: highNeedsKeys
             })
           );
 
@@ -74,8 +79,8 @@ export async function getRecommendations(req, res) {
       nutritionalNeeds
     });
   } catch (error) {
-    logPerformance(req, 'GET_RECOMMENDATIONS_FATAL', Date.now() - startTime, 'FAILURE', { 
-      failure_remark: error.message 
+    logPerformance(req, 'GET_RECOMMENDATIONS_FATAL', Date.now() - startTime, 'FAILURE', {
+      failure_remark: error.message
     });
     res.status(500).json({ success: false, error: 'Failed to get recommendations' });
   }
@@ -97,8 +102,8 @@ export async function getRecipe(req, res) {
 
     res.json({ success: true, recipe: { ...recipe, isFavorited } });
   } catch (error) {
-    logPerformance(req, 'FETCH_RECIPES_FATAL', Date.now() - startTime, 'FAILURE', { 
-      failure_remark: error.message 
+    logPerformance(req, 'FETCH_RECIPES_FATAL', Date.now() - startTime, 'FAILURE', {
+      failure_remark: error.message
     });
     res.status(500).json({ success: false, error: 'Failed to fetch recipe' });
   }
@@ -107,17 +112,10 @@ export async function getRecipe(req, res) {
 // Search recipes
 export async function searchRecipes(req, res) {
   try {
-    const { q, tags, limit } = req.query;
+    const { q, limit } = req.query;
     let recipes;
 
-    if (tags) {
-      const tagArray = tags.split(',').map(t => t.trim());
-      // Log the specific tags used in the search
-      recipes = await trackRDS(req, 'READ_SEARCH_TAGS', () => Recipe.getRecipesByTags(tagArray), {
-        search_tags: tagArray,
-        result_limit: limit || 20
-      });
-    } else if (q) {
+    if (q) {
       // Log the text query string
       recipes = await trackRDS(req, 'READ_SEARCH_QUERY', () => Recipe.searchRecipes(q, limit || 20), {
         search_query: q,
@@ -131,8 +129,8 @@ export async function searchRecipes(req, res) {
 
     res.json({ success: true, recipes, count: recipes.length });
   } catch (error) {
-    logPerformance(req, 'SEARCH_RECIPES_FATAL', Date.now() - startTime, 'FAILURE', { 
-      failure_remark: error.message 
+    logPerformance(req, 'SEARCH_RECIPES_FATAL', Date.now() - startTime, 'FAILURE', {
+      failure_remark: error.message
     });
     res.status(500).json({ success: false, error: 'Failed to search recipes' });
   }
@@ -163,8 +161,8 @@ export async function removeFavorite(req, res) {
 
     res.json({ success: true, message: 'Recipe removed' });
   } catch (error) {
-    logPerformance(req, 'FAVORITE_RECIPES_FATAL', Date.now() - startTime, 'FAILURE', { 
-      failure_remark: error.message 
+    logPerformance(req, 'FAVORITE_RECIPES_FATAL', Date.now() - startTime, 'FAILURE', {
+      failure_remark: error.message
     });
     res.status(500).json({ success: false, error: 'Failed to remove favorite' });
   }
@@ -177,8 +175,8 @@ export async function getFavorites(req, res) {
     const favorites = await trackRDS(req, 'READ_USER_FAVORITES', () => Recipe.getUserFavorites(userId));
     res.json({ success: true, favorites, count: favorites.length });
   } catch (error) {
-    logPerformance(req, 'FAVORITE_RECIPES_FETCH_FATAL', Date.now() - startTime, 'FAILURE', { 
-      failure_remark: error.message 
+    logPerformance(req, 'FAVORITE_RECIPES_FETCH_FATAL', Date.now() - startTime, 'FAILURE', {
+      failure_remark: error.message
     });
     res.status(500).json({ success: false, error: 'Failed to fetch favorites' });
   }

@@ -137,13 +137,13 @@ function RecipesPage() {
                     <span>📊 {recipe.difficulty}</span>
                   </div>
 
-                  <div className="flex flex-wrap gap-2 mb-4">
+                  {/* <div className="flex flex-wrap gap-2 mb-4">
                     {recipe.tags.slice(0, 3).map((tag) => (
                       <span key={tag} className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
                         {tag}
                       </span>
                     ))}
-                  </div>
+                  </div> */}
 
                   <button
                     onClick={() => navigate(`/recipes/${recipe.id}`)}
