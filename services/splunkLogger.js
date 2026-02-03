@@ -2,18 +2,34 @@ import winston from 'winston';
 import geoip from 'geoip-lite';
 
 
-// Helper to extract the real client IP and its location
 const getClientContext = (req) => {
-  // CloudWatch format: "client, proxy" -> we take the first one
+  // 1. Extract IP
   const rawIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
   const clientIp = rawIp.split(',')[0].trim();
-  
+
+  // 2. Lookup Geo Data
   const geo = geoip.lookup(clientIp);
-  
+  const countryCode = geo ? geo.country.toUpperCase() : 'UNKNOWN';
+
+  // 3. Define Region Map
+  const regionMap = {
+    'US': 'us-east-1',
+    'IN': 'ap-south-1',
+    'AU': 'ap-southeast-2',
+    'GB': 'eu-west-1',
+    'FR': 'eu-west-1',
+    'DE': 'eu-central-1',
+  };
+
+  // 4. Determine AWS Region
+  // We use the countryCode directly as the key for the lookup
+  const aws_region = regionMap[countryCode] || 'us-east-1'; // Default to us-east-1
+
   return {
     ip_address: clientIp,
-    region: geo ? `${geo.city}, ${geo.region}, ${geo.country}` : 'Unknown',
-    country: geo ? geo.country : 'Unknown'
+    location: geo ? `${geo.city}, ${geo.region}, ${geo.country}` : 'Unknown',
+    country: countryCode,
+    aws_region: aws_region
   };
 };
 
@@ -56,7 +72,7 @@ export function logFileUpload(req, file, extra = {}) {
  * Includes Geo-location and full error stack for debugging
  */
 export function logFileUploadError(req, file, error, duration = 0) {
-  const { ip_address, region } = getClientContext(req);
+  const { ip_address, region, country, aws_region } = getClientContext(req);
   const userId = req?.body?.userId || req?.query?.userId || 'anonymous';
 
   splunkLogger.error(`EVENT: FILE_UPLOAD_FAILURE`, {
@@ -65,6 +81,8 @@ export function logFileUploadError(req, file, error, duration = 0) {
     status: 'FAILURE',
     duration_ms: duration,
     geo_location: region,
+    country: country,
+    aws_region: aws_region,
     security: {
       ip_address: ip_address,
       user_id: userId,
@@ -90,7 +108,7 @@ export function logFileUploadError(req, file, error, duration = 0) {
  * Maps security threats into the unified format with Geo-location
  */
 export function logSuspiciousFileUpload(req, file, reason) {
-  const { ip_address, region } = getClientContext(req);
+  const { ip_address, region, country,aws_region } = getClientContext(req);
   const userId = req?.body?.userId || req?.query?.userId || 'anonymous';
 
   splunkLogger.warn(`SECURITY_ALERT: SUSPICIOUS_FILE_UPLOAD`, {
@@ -100,6 +118,8 @@ export function logSuspiciousFileUpload(req, file, reason) {
     severity: 'HIGH',
     duration_ms: 0, // Security rejections are usually near-instant
     geo_location: region,
+    aws_region: aws_region,
+    country: country,
     security: {
       ip_address: ip_address,
       user_id: userId,
@@ -117,7 +137,7 @@ export function logSuspiciousFileUpload(req, file, reason) {
 }
 
 export function logPerformance(req, actionName, durationMs, status = 'SUCCESS', extraData = {}) {
-  const { ip_address, region } = getClientContext(req);
+  const { ip_address, region, country,aws_region } = getClientContext(req);
   const userId = req.userContext?.id || req.body?.userId || req.query?.userId || 'anonymous';
 
   splunkLogger.info(`PERFORMANCE_METRIC: ${actionName}`, {
@@ -126,6 +146,8 @@ export function logPerformance(req, actionName, durationMs, status = 'SUCCESS', 
     status: status, // Added SUCCESS or FAILURE
     duration_ms: durationMs,
     geo_location: region, // Added Geographical region
+    aws_region: aws_region,
+    country: country,
     security: {
       ip_address: ip_address,
       user_id: userId,
@@ -145,9 +167,9 @@ export async function trackRDS(req, action, taskFn, extraData = {}) {
     return result;
   } catch (error) {
     // Log with FAILURE status and include error message
-    logPerformance(req, `RDS_${action}`, Date.now() - startTime, 'FAILURE', { 
+    logPerformance(req, `RDS_${action}`, Date.now() - startTime, 'FAILURE', {
       error: error.message,
-      ...extraData 
+      ...extraData
     });
     throw error;
   }
