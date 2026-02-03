@@ -30,7 +30,6 @@ export async function getRecommendations(req, res) {
     // 3. Generate via LLM if pool is small
     console.log("Recipes found", recipes)
     const highNeedsKeys = Object.entries(nutritionalNeeds)
-      .filter(([key, value]) => value === 'high')
       .map(([key, value]) => key);
 
     if (recipes.length < 3) {

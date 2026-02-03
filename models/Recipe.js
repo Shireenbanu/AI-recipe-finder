@@ -69,7 +69,6 @@ export async function getRecipeById(recipeId) {
 export async function getRecipesByNutrients(nutrients) {
 
   const nutrientConditions = Object.entries(nutrients)
-    .filter(([_, level]) => level === 'high')
     .map(([nutrient, _]) => `%${nutrient}%`); // ADD % wildcards here!
 
   if (nutrientConditions.length === 0) {
@@ -79,7 +78,7 @@ export async function getRecipesByNutrients(nutrients) {
   // Get recipes that contain any of the required nutrients
   const query = `
     SELECT * FROM recipes
-    WHERE nutritional_needs LIKE ANY($1)
+    WHERE nutritional_needs LIKE ALL($1)
     ORDER BY created_at DESC
     LIMIT 20
   `;
