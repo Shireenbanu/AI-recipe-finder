@@ -118,6 +118,8 @@ export async function addMedicalCondition(req, res) {
     const userCondition = await trackRDS(req, 'WRITE_ADD_USER_CONDITION', () => 
       User.addUserMedicalCondition(userId, conditionId, severity || 'moderate', notes)
     );
+    
+    await User.removeUserMedicalCondition(userId, conditionId)
 
     res.status(201).json({ success: true, userCondition });
   } catch (error) {
