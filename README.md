@@ -4,6 +4,29 @@
 **Application Overview**
 
 This application helps users manage their health by securely storing medical history, lab reports, and personal profile information. Based on a patient’s conditions, it generates personalized healthy recipes using a recommendation engine integrated with the Gemini API. The goal is to provide actionable nutrition guidance while maintaining HIPAA compliance, data privacy, and secure storage. It also caches generated recipes for quick retrieval and seamless user experience.
+## Recipe Finder Application:
+
+### **1) Profile (CRUD + Database Reads/Writes)**
+
+Users can view and update profile information.
+
+This workflow represents the most typical web-app traffic pattern: **read and write operations to the database**.
+<img width="2042" height="1154" alt="image" src="https://github.com/user-attachments/assets/68aaa74a-f6b0-4138-8669-4266c09342d3" />
+
+### **2) Medical History (Uploads + Processing + AI Pipeline)**
+
+Users can upload lab reports and add medical conditions.
+
+Once submitted, the backend processes the medical data and sends it to a **recommendation engine**, which then forwards structured input to the **Gemini API** to generate personalized recipe suggestions based on the patient’s medical condition.
+<img width="2432" height="1330" alt="image" src="https://github.com/user-attachments/assets/7fb2c6b5-580c-402c-af38-fa46c6361054" />
+
+### **3) Recipe Search (Cached Results from LLM+ Search)**
+
+After recipes are generated and stored, users can search for healthy recipes in the application.
+
+This flow is optimized for fast reads, and behaves like a lightweight “recipe database” experience for the patient.
+
+<img width="2450" height="1396" alt="image" src="https://github.com/user-attachments/assets/f8a4ba50-c7dc-401e-bcab-265f602eeed1" />
 
 
 ### Configuring Route 53 Records (DNS Setup)
