@@ -155,12 +155,11 @@ Users can access their reports via presigned URLs valid for 30 minutes only.
 Minimal PHI is sent to the LLM, ensuring privacy and compliance.
 
 ### Monitoring: Latency Analysis with Grafana:
+<img width="1280" height="1623" alt="image" src="https://github.com/user-attachments/assets/a7b882d4-6f2a-410f-8fbc-19ef72b9bea4" />
 
 Logs Collected from 3 different sources: **ECS Fargate Telemetry**, **ECS Task Container logs** (Application logs), **ELB logs** (S3+Athena Integration)
 
-I implemented monitoring using **Grafana**, with two dashboards to track both performance and scalability.
-
-<img width="1280" height="1623" alt="image" src="https://github.com/user-attachments/assets/a7b882d4-6f2a-410f-8fbc-19ef72b9bea4" />
+Refer this article to deep dive into the Grafana Dashboard Design: [Open in Notion](https://splendid-efraasia-906.notion.site/End-to-End-Observability-with-Grafana-Recipe-Finder-Application-3001d0b79b89805abafbdd9027885cda)
 
 
 
