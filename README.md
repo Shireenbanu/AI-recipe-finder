@@ -131,15 +131,14 @@ Lab reports are stored in a private S3 bucket.
 Users can access their reports via presigned URLs valid for 30 minutes only.
 Minimal PHI is sent to the LLM, ensuring privacy and compliance.
 
-### Monitoring: Latency Analysis with Grafana
+### Monitoring: Latency Analysis with Grafana:
 
-Below is a screenshot of the Grafana dashboard I set up to monitor **p99 latencies** for the application.  
+Logs Collected from 3 different sources: **ECS Fargate Telemetry**, **ECS Task Container logs** (Application logs), **ELB logs** (S3+Athena Integration)
 
-<img width="1308" height="660" alt="image" src="https://github.com/user-attachments/assets/5430fab5-008d-4353-8dbb-2a73275cf91a" />
+I implemented monitoring using **Grafana**, with two dashboards to track both performance and scalability.
 
-**Observations:**
-- The **Gemini API** has the highest latency, with p99 measured at **3854 ms**.  
-- Other services (S3 downloads, S3 uploads, RDS queries) show significantly lower latency.  
-- This highlights why **caching Gemini responses** for repeated conditions is critical to improve responsiveness and reduce API costs.
+<img width="1280" height="1623" alt="image" src="https://github.com/user-attachments/assets/a7b882d4-6f2a-410f-8fbc-19ef72b9bea4" />
+
+
 
 
