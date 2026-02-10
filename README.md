@@ -168,7 +168,7 @@ Logs Collected from 3 different sources: **ECS Fargate Telemetry**, **ECS Task C
 
 Refer this article to deep dive into the Grafana Dashboard Design: [Open in Notion](https://splendid-efraasia-906.notion.site/End-to-End-Observability-with-Grafana-Recipe-Finder-Application-3001d0b79b89805abafbdd9027885cda)
 
-{% embed https://youtu.be/1F6iBje5WDQ %}
+[![K6 Load Test Video](https://youtu.be/1F6iBje5WDQ)
 
 
 
