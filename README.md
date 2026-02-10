@@ -4,6 +4,13 @@
 **Application Overview**
 
 This application helps users manage their health by securely storing medical history, lab reports, and personal profile information. Based on a patient’s conditions, it generates personalized healthy recipes using a recommendation engine integrated with the Gemini API. The goal is to provide actionable nutrition guidance while maintaining HIPAA compliance, data privacy, and secure storage. It also caches generated recipes for quick retrieval and seamless user experience.
+
+How to install:
+```
+    terraform apply
+    terrform destroy  #to destroy the infra
+```
+
 ## Recipe Finder Application:
 
 ### **1) Profile (CRUD + Database Reads/Writes)**
