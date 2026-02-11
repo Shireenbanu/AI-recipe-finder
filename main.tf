@@ -569,6 +569,7 @@ resource "aws_ecs_cluster_capacity_providers" "main" {
   }
 }
 
+
 # ========================================
 # CLOUDWATCH LOGS
 # ========================================
@@ -690,7 +691,7 @@ resource "aws_iam_role_policy" "ecs_task_role_policy" {
 
 # 1. Define the Secret Metadata
 resource "aws_secretsmanager_secret" "app_secrets" {
-  name        = "production/recipe-finder-web/secrets"
+  name        = "production/recipe-finder-web/secrets_1"
   description = "Contains DB credentials and host information"
 }
 
