@@ -51,7 +51,7 @@ variable "app_port" {
 variable "db_password" {
   description = "Master password for RDS"
   type        = string
-  default   = 9900126357
+  sensitive   = true
 }
 
 # ----------------------------------------
@@ -457,13 +457,13 @@ variable "app_memory" {
 variable "desired_count" {
   description = "Desired number of tasks"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "min_capacity" {
   description = "Minimum number of tasks"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "max_capacity" {

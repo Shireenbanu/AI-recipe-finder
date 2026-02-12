@@ -104,6 +104,18 @@ export async function addUserMedicalCondition(userId, conditionId, severity, not
   return result.rows[0];
 }
 
+export async function removeUserMedicalCondition(userId, conditionId) {
+  const query = `
+    DELETE FROM user_medical_conditions
+    WHERE user_id = $1 AND medical_condition_id = $2
+    RETURNING *
+  `;
+  
+  const result = await pool.query(query, [userId, conditionId]);
+  return result.rows[0];
+}
+
+
 // Get user's medical conditions with details
 export async function getUserMedicalConditions(userId) {
   const query = `
@@ -127,16 +139,6 @@ export async function getUserMedicalConditions(userId) {
 }
 
 // Remove medical condition from user
-export async function removeUserMedicalCondition(userId, conditionId) {
-  const query = `
-    DELETE FROM user_medical_conditions
-    WHERE user_id = $1 AND medical_condition_id = $2
-    RETURNING *
-  `;
-  
-  const result = await pool.query(query, [userId, conditionId]);
-  return result.rows[0];
-}
 
 // Get aggregated nutritional requirements for a user
 export async function getUserNutritionalNeeds(userId) {
