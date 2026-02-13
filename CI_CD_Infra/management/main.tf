@@ -75,75 +75,68 @@ resource "aws_instance" "jenkins_server" {
   vpc_security_group_ids = [aws_security_group.jenkins_sg.id]
   
   user_data = <<-EOF
-     #!/bin/bash
-  exec > >(tee /var/log/user-data.log) 2>&1
-  echo "=== User Data Script Started at $(date) ==="
-  
-  # Update system
-  sudo dnf update -y
-  
-  # Install Java 17
-  echo "=== Installing Java ==="
-  sudo dnf install java-17-amazon-corretto -y
-  java -version
-  
-  # Install Jenkins
-  echo "=== Installing Jenkins ==="
-  sudo dnf install fontconfig -y
-  
-  # Add Jenkins repository properly
-  sudo dnf install -y dnf-plugins-core
-  sudo dnf config-manager --add-repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
-  sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
-  
-  # Install Jenkins from repository
-  sudo dnf install jenkins -y
-  
-  # Start Jenkins
-  sudo systemctl daemon-reload
-  sudo systemctl enable jenkins
-  sudo systemctl start jenkins   
+#!/bin/bash
+exec > >(tee /var/log/user-data.log) 2>&1
+echo "=== User Data Script Started at $(date) ==="
 
-  # Wait for Jenkins to start
-  sleep 20
+# Update system
+dnf update -y
 
-  # 3. Install Docker
-  echo "=== Installing Docker ==="
-  sudo dnf install docker -y
-  sudo systemctl enable docker
-  sudo systemctl start docker
-  sudo usermod -aG docker jenkins
-  sudo usermod -aG docker ec2-user
-  
-  echo "=== Installing Security Tools ==="
+# Install Java 17
+echo "=== Installing Java ==="
+dnf install java-17-amazon-corretto -y
+java -version
 
-  # Python3 and pip
-  sudo dnf install python3-pip -y
+# Install Jenkins
+echo "=== Installing Jenkins ==="
+dnf install fontconfig dnf-plugins-core -y
+dnf config-manager --add-repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
+rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+dnf install jenkins -y
 
-  # Checkov (IaC Scan) - install as user
-  pip3 install --user checkov
+# Start Jenkins
+systemctl daemon-reload
+systemctl enable jenkins
+systemctl start jenkins   
+sleep 20
 
-  # Gitleaks (Secret Scan)
-  echo "=== Installing Gitleaks ==="
-  sudo dnf install git -y
-  cd /tmp
-  curl -Lo gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.18.2/gitleaks_8.18.2_linux_x64.tar.gz
-  tar -xzf gitleaks.tar.gz
-  sudo mv gitleaks /usr/local/bin/
-  sudo chmod +x /usr/local/bin/gitleaks
-  rm gitleaks.tar.gz
-  cd -
-   # Syft (SBOM Generation)
-  echo "=== Installing Syft ==="
-  curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sudo sh -s -- -b /usr/local/bin
+# Install Docker
+echo "=== Installing Docker ==="
+dnf install docker -y
+systemctl enable docker
+systemctl start docker
+usermod -aG docker jenkins
+usermod -aG docker ec2-user
 
-    # Grype (Vulnerability Scan)
-  echo "=== Installing Grype ==="
-  curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sudo sh -s -- -b /usr/local/bin
+echo "=== Installing Security Tools ==="
 
-    echo "=== User Data Script Completed at $(date) ==="
-    echo "SUCCESS" > /tmp/user-data-complete
-  EOF
+# Python3 and pip
+dnf install python3-pip -y
+
+# Checkov (IaC Scan) - system-wide
+pip3 install checkov
+
+# Gitleaks (Secret Scan)
+echo "=== Installing Gitleaks ==="
+dnf install git -y
+cd /tmp
+curl -Lo gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.18.2/gitleaks_8.18.2_linux_x64.tar.gz
+tar -xzf gitleaks.tar.gz
+mv gitleaks /usr/local/bin/
+chmod +x /usr/local/bin/gitleaks
+rm gitleaks.tar.gz
+
+# Syft (SBOM Generation)
+echo "=== Installing Syft ==="
+curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+# Grype (Vulnerability Scan)
+echo "=== Installing Grype ==="
+curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+
+echo "=== User Data Script Completed at $(date) ==="
+echo "SUCCESS" > /tmp/user-data-complete
+EOF
   
   tags = { Name = "Jenkins-Management-Server" }
 }
