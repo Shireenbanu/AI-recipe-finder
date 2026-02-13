@@ -1,0 +1,11 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow Cognito Public IDs"
+regexes = [
+    'us-west-2_8hJ9rdYYz',
+    '424rre660gcrdf0mjh48ossbf0'     
+]
+
+
