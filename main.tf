@@ -96,6 +96,20 @@ resource "aws_vpc" "main" {
   }
 }
 
+
+ resource "aws_default_security_group" "default" {
+  vpc_id = aws_vpc.main.id
+
+  # Leaving ingress and egress empty removes all default rules
+  ingress = {}
+  egress  = {}
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-default-sg"
+    Note = "Do not use - restricted by policy"
+  }
+}
+
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
   
