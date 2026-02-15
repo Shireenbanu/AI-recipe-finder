@@ -10,23 +10,18 @@ resource "aws_ecr_repository" "app" {
 
   encryption_configuration {
     encryption_type = "KMS"
-    kms_key         = aws_kms_key.main.arn # <--- Link the key
+    kms_key         = aws_kms_key.main.arn 
   }
 }
 
 # ----------------------------------------
 # 2. Secrets Manager
 # ----------------------------------------
-resource "aws_secretsmanager_secret" "app_secrets"{
-  name        = "${var.project_name}/${var.environment}/secrets_1"
-  description = "Secrets for Recipe Finder App"
-}
 
-# 2. Upload the JSON file as the secret value
-resource "aws_secretsmanager_secret_version" "app_secrets_val" {
-  secret_id     = aws_secretsmanager_secret.app_secrets.id
-  # trimspace ensures no accidental newlines from the file are uploaded
-  secret_string = file("${path.module}/secrets.json")
+# checkov:skip=CKV2_AWS_57: Gemini API keys must be rotated manually in Google AI Studio
+resource "aws_secretsmanager_secret" "gemini_key" {
+  name        = "${var.project_name}/gemini-api-key"
+  description = "Gemini API Key - Rotate manually in Google Console"
 }
 
 # ----------------------------------------
