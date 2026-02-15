@@ -68,6 +68,7 @@ resource "aws_ecs_task_definition" "app" {
 resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/${var.project_name}-${var.environment}"
   retention_in_days = 7
+  kms_key_id        = aws_kms_key.main.arn 
 }
 
 # 3. ECS Service (The Process)
