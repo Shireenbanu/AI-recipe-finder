@@ -39,6 +39,16 @@ resource "aws_security_group_rule" "alb_ingress_http" {
   security_group_id = aws_security_group.alb.id
 }
 
+resource "aws_security_group_rule" "alb_ingress_https" {
+  type              = "ingress"
+  description       = "HTTPS from Internet"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = aws_security_group.alb.id
+}
+
 
 resource "aws_security_group_rule" "alb_egress_to_ecs" {
   type                     = "egress"
@@ -78,6 +88,16 @@ resource "aws_security_group_rule" "ecs_egress_all" {
   protocol          = "-1"
   cidr_blocks       = ["0.0.0.0/0"]
   security_group_id = aws_security_group.ecs_tasks.id
+}
+
+resource "aws_security_group_rule" "db_ingress_from_vpc" {
+  type              = "ingress"
+  description       = "PostgreSQL from VPC"
+  from_port         = 5432
+  to_port           = 5432
+  protocol          = "tcp"
+  cidr_blocks       = [aws_vpc.main.cidr_block]
+  security_group_id = aws_security_group.db.id
 }
 
 # ========================================
@@ -124,6 +144,7 @@ resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
     ]
   })
 }
+
 resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   role       = aws_iam_role.ecs_task_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"

@@ -1,3 +1,29 @@
+resource "aws_ecs_cluster" "main" {
+  name = "${var.project_name}-${var.environment}-cluster"
+  
+  setting {
+    name  = "containerInsights"
+    value = "enabled"
+  }
+  
+  tags = {
+    Name = "${var.project_name}-${var.environment}-ecs-cluster"
+  }
+}
+
+resource "aws_ecs_cluster_capacity_providers" "main" {
+  cluster_name = aws_ecs_cluster.main.name
+  
+  capacity_providers = ["FARGATE", "FARGATE_SPOT"]
+  
+  default_capacity_provider_strategy {
+    base              = 1
+    weight            = 100
+    capacity_provider = "FARGATE"
+  }
+}
+
+
 # 1. ECS Task Definition (The Blueprint)
 resource "aws_ecs_task_definition" "app" {
   family                   = "${var.project_name}-${var.environment}"
@@ -88,6 +114,8 @@ resource "aws_ecs_service" "app" {
     container_name   = var.project_name
     container_port   = 80
   }
+
+  
 
   depends_on = [aws_lb_listener.http]
 }

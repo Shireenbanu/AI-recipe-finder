@@ -1,14 +1,3 @@
-# 1. ECS Cluster
-resource "aws_ecs_cluster" "main" {
-  name = "${var.project_name}-${var.environment}-cluster"
-  
-  setting {
-    name  = "containerInsights"
-    value = "enabled"
-  }
-}
-
-# 2. Application Load Balancer
 resource "aws_lb" "main" {
   name               = "${var.project_name}-${var.environment}-alb"
   internal           = false
@@ -16,7 +5,7 @@ resource "aws_lb" "main" {
   security_groups    = [aws_security_group.alb.id]
   subnets            = aws_subnet.public[*].id
   
-  enable_deletion_protection = false
+  enable_deletion_protection       = false
   enable_http2                     = true
   enable_cross_zone_load_balancing = true
   
@@ -25,7 +14,6 @@ resource "aws_lb" "main" {
   }
 }
 
-# 3. Target Group (Where the traffic goes)
 resource "aws_lb_target_group" "app" {
   name        = "${var.project_name}-${var.environment}-tg"
   port        = 80
@@ -34,23 +22,49 @@ resource "aws_lb_target_group" "app" {
   target_type = "ip"
   
   health_check {
-    enabled = true
-    path                = "/"
-    port                = "traffic-port"
-    protocol = "HTTP"
-    healthy_threshold   = 3
-    unhealthy_threshold = 3
-    timeout             = 5
+    enabled             = true
+    path                = "/"        # This matches your curl http://127.0.0.1/
+    port                = "traffic-port" # This targets Port 80
+    protocol            = "HTTP"
+    matcher             = "200-399"  # Accepts any successful status or redirect
     interval            = 30
-    matcher             = "200-399"
+    timeout             = 5
+    healthy_threshold   = 2          # Fewer checks to turn green faster
+    unhealthy_threshold = 3
+  }
+  
+  deregistration_delay = 30
+  
+  tags = {
+    Name = "${var.project_name}-${var.environment}-tg"
   }
 }
 
-# 4. HTTP Listener (Redirects to HTTPS later, but we'll start with 80)
+
+# 1. HTTP Listener - Redirects all port 80 traffic to HTTPS 443
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
   port              = "80"
   protocol          = "HTTP"
+
+  default_action {
+    type = "redirect"
+
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301" # Permanent redirect
+    }
+  }
+}
+
+# 2. HTTPS Listener - Handles secure traffic and forwards to the app
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08" # Standard AWS policy
+  certificate_arn   =  aws_acm_certificate_validation.cert.certificate_arn      # REQUIRED: You must have an ACM certificate ARN
 
   default_action {
     type             = "forward"
@@ -58,12 +72,4 @@ resource "aws_lb_listener" "http" {
   }
 }
 
-resource "aws_security_group_rule" "db_ingress_from_vpc" {
-  type              = "ingress"
-  description       = "PostgreSQL from VPC"
-  from_port         = 5432
-  to_port           = 5432
-  protocol          = "tcp"
-  cidr_blocks       = [aws_vpc.main.cidr_block]
-  security_group_id = aws_security_group.db.id
-}
+

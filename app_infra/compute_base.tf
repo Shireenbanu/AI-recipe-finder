@@ -14,10 +14,6 @@ resource "aws_ecr_repository" "app" {
   }
 }
 
-# ----------------------------------------
-# 2. Secrets Manager
-# ----------------------------------------
-# checkov:skip=CKV2_AWS_57: This is a third-party Google API key. Automated rotation is not supported by AWS; rotation is managed manually via the Google AI Console.
 
 
 # ----------------------------------------
@@ -147,7 +143,7 @@ resource "aws_kms_key_policy" "main_policy" {
         Sid    = "Allow secret manager to use the key"
         Effect = "Allow"
         Principal = {
-          Service = "secretsmanager.amazon.com"
+          Service = "secretsmanager.amazonaws.com"
         }
         Action = [
           "kms:Encrypt",
