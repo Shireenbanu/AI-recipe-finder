@@ -17,12 +17,8 @@ resource "aws_ecr_repository" "app" {
 # ----------------------------------------
 # 2. Secrets Manager
 # ----------------------------------------
+# checkov:skip=CKV2_AWS_57: This is a third-party Google API key. Automated rotation is not supported by AWS; rotation is managed manually via the Google AI Console.
 
-# checkov:skip=CKV2_AWS_57: Gemini API keys must be rotated manually in Google AI Studio
-resource "aws_secretsmanager_secret" "gemini_key" {
-  name        = "${var.project_name}/gemini-api-key"
-  description = "Gemini API Key - Rotate manually in Google Console"
-}
 
 # ----------------------------------------
 # 3. ECS Task Role (Permissions for the APP)
@@ -86,7 +82,17 @@ resource "aws_kms_key" "main" {
   description             = "KMS key for ECR and CloudWatch Logs"
   deletion_window_in_days = 7
   enable_key_rotation     = true
+}
 
+resource "aws_secretsmanager_secret" "gemini_key" {
+  name        = "${var.project_name}/gemini-api-key"
+  description = "Gemini API Key - Rotate manually in Google Console"
+  kms_key_id =  aws_kms_key.main.arn
+
+}
+
+resource "aws_kms_key_policy" "main_policy" {
+  key_id = aws_kms_key.main.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -136,10 +142,26 @@ resource "aws_kms_key" "main" {
           "kms:DescribeKey"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "Allow secret manager to use the key"
+        Effect = "Allow"
+        Principal = {
+          Service = "secretsmanager.amazon.com"
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ]
+        Resource = [aws_secretsmanager_secret.gemini_key.arn]
       }
     ]
   })
 }
+
 
 # Create an Alias so it's easy to identify in the Console
 resource "aws_kms_alias" "main" {
