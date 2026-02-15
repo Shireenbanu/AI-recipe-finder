@@ -18,7 +18,6 @@ phases:
   post_build:
     commands:
       - echo "POST-BUILD PHASE STARTED"
-      - docker push $REPOSITORY_URI:latest
       - docker push $REPOSITORY_URI:$IMAGE_TAG
       - printf '[{"name":"recipe-finder-container","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
 artifacts:
