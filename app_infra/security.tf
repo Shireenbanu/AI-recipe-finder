@@ -39,6 +39,17 @@ resource "aws_security_group_rule" "alb_ingress_http" {
   security_group_id = aws_security_group.alb.id
 }
 
+
+resource "aws_security_group_rule" "alb_egress_to_ecs" {
+  type                     = "egress"
+  description              = "To ECS Tasks"
+  from_port                = var.app_port
+  to_port                  = var.app_port
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.ecs_tasks.id
+  security_group_id        = aws_security_group.alb.id
+}
+
 # ECS Ingress (Allow traffic ONLY from ALB)
 resource "aws_security_group_rule" "ecs_ingress_from_alb" {
   type                     = "ingress"
