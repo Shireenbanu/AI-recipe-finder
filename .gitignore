@@ -26,4 +26,4 @@ certs/
 terraform.*
 !.terraform.lock.hcl
 secrets.json
-maint.tf
+main.tf
