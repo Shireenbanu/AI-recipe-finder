@@ -98,11 +98,7 @@ resource "aws_vpc" "main" {
 
 
  resource "aws_default_security_group" "default" {
-  vpc_id = aws_vpc.main.id
-
-  # Leaving ingress and egress empty removes all default rules
-  ingress = {}
-  egress  = {}
+  vpc_id = aws_vpc.main.id 
 
   tags = {
     Name = "${var.project_name}-${var.environment}-default-sg"
@@ -705,7 +701,7 @@ resource "aws_iam_role_policy" "ecs_task_role_policy" {
 
 # 1. Define the Secret Metadata
 resource "aws_secretsmanager_secret" "app_secrets" {
-  name        = "production/recipe-finder-web/secrets_1"
+  name        = "production/recipe-finder-web/secrets_2"
   description = "Contains DB credentials and host information"
 }
 
