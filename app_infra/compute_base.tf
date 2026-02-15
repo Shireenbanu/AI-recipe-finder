@@ -54,22 +54,35 @@ resource "aws_iam_role_policy" "ecs_task_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "S3DataAccess"
         Effect = "Allow"
-        Action = ["s3:*", "secretsmanager:GetSecretValue"]
-        Resource = "*"
+        # List ONLY what the app actually does. 
+        # s3:* is too broad for security scanners.
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:ListBucket",
+          "s3:DeleteObject"
+        ]
+        # You need BOTH the bucket and the objects path
+        Resource = [
+          "arn:aws:s3:::ai-recipe-app-uploads-2026-us-west",
+          "arn:aws:s3:::ai-recipe-app-uploads-2026-us-west/*"
+        ]
       },
-       {
+      {
+        Sid    = "CloudWatchLogsAccess"
         Effect = "Allow"
         Action = [
           "logs:CreateLogStream",
           "logs:PutLogEvents"
         ]
-        Resource = "*"
+        # Scanners usually accept "*" for logs, but scoped is better:
+        Resource = ["${aws_cloudwatch_log_group.ecs.arn}:*"]
       }
     ]
   })
 }
-
 
 # Get current AWS Account ID
 data "aws_caller_identity" "current" {}

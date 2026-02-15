@@ -24,7 +24,9 @@ resource "aws_ecs_task_definition" "app" {
       { name = "DB_NAME", value = "recipedb" },
       { name = "DB_USER", value = "shireen_admin" },
       { name = "PORT", value = "80" },
-      { name = "NODE_ENV", value = var.environment }
+      { name = "NODE_ENV", value = var.environment },
+      { name = "AWS_REGION", value = "us-west-2" },
+      { name = "AWS_S3_BUCKET_NAME", value = "ai-recipe-app-uploads-2026-us-west"}
     ]
 
     secrets = [

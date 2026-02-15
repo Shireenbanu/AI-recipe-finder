@@ -57,3 +57,13 @@ resource "aws_lb_listener" "http" {
     target_group_arn = aws_lb_target_group.app.arn
   }
 }
+
+resource "aws_security_group_rule" "db_ingress_from_vpc" {
+  type              = "ingress"
+  description       = "PostgreSQL from VPC"
+  from_port         = 5432
+  to_port           = 5432
+  protocol          = "tcp"
+  cidr_blocks       = [aws_vpc.main.cidr_block]
+  security_group_id = aws_security_group.db.id
+}
