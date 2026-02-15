@@ -109,7 +109,9 @@ resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
         Action = [
           "secretsmanager:GetSecretValue"
         ]
-        Resource = [aws_secretsmanager_secret.app_secrets.arn]
+        Resource = [aws_db_instance.recipe_db.master_user_secret[0].secret_arn,
+        aws_secretsmanager_secret.gemini_key.arn
+        ]
       },
       {
         Effect = "Allow"

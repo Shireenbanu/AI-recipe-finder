@@ -29,20 +29,16 @@ resource "aws_ecs_task_definition" "app" {
       { name = "AWS_S3_BUCKET_NAME", value = "ai-recipe-app-uploads-2026-us-west"}
     ]
 
-    secrets = [
-      {
-        name      = "DB_PASSWORD"
-        valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:DB_PASSWORD::"
-      },
-      {
-        name      = "GEMINI_API_KEY"
-        valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:GEMINI_API_KEY::"
-      },
-      {
-        name      = "AWS_SECRET_ACCESS_KEY"
-        valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:AWS_SECRET_ACCESS_KEY::"
-      }
-    ]
+  secrets = [
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = "${aws_db_instance.recipe_db.master_user_secret[0].secret_arn}:password::"
+        },
+        {
+          name      = "GEMINI_API_KEY"
+          valueFrom = "${aws_secretsmanager_secret.gemini_key.arn}:GEMINI_API_KEY::"
+        }
+      ]
 
     logConfiguration = {
       logDriver = "awslogs"
