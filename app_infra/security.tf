@@ -79,8 +79,8 @@ resource "aws_iam_role" "ecs_task_execution_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
       Principal = { Service = "ecs-tasks.amazonaws.com" }
     }]
   })
@@ -96,11 +96,17 @@ resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
       {
         Effect = "Allow"
         Action = [
-          "secretsmanager:GetSecretValue",
-          "kms:Decrypt" # Required if you're using a custom encryption key
+          "secretsmanager:GetSecretValue"
         ]
-        # Use the Terraform reference so you don't have to worry about the -rpJEp6 suffix!
         Resource = [aws_secretsmanager_secret.app_secrets.arn]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt",
+          "kms:DescribeKey"
+        ]
+        Resource = [aws_kms_key.main.arn]
       }
     ]
   })
@@ -110,71 +116,3 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-
-# Get current AWS Account ID
-data "aws_caller_identity" "current" {}
-
-resource "aws_kms_key" "main" {
-  description             = "KMS key for ECR and CloudWatch Logs"
-  deletion_window_in_days = 7
-  enable_key_rotation     = true
-  
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      # 1. Allow the Root User (Account Admin) full access so you don't get locked out
-      {
-        Sid    = "Enable IAM User Permissions"
-        Effect = "Allow"
-        Principal = {
-          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
-        }
-        Action   = "kms:*"
-        Resource = "*"
-      },
-      # 2. Allow CloudWatch Logs to use the key
-      {
-        Sid    = "Allow CloudWatch Logs"
-        Effect = "Allow"
-        Principal = {
-          Service = "logs.${var.aws_region}.amazonaws.com"
-        }
-        Action = [
-          "kms:Encrypt*",
-          "kms:Decrypt*",
-          "kms:ReEncrypt*",
-          "kms:GenerateDataKey*",
-          "kms:Describe*"
-        ]
-        Resource = "*"
-        Condition = {
-          ArnLike = {
-            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:*"
-          }
-        }
-      },
-      # 3. Allow ECR to use the key
-      {
-        Sid    = "Allow ECR to use the key"
-        Effect = "Allow"
-        Principal = {
-          Service = "ecr.amazonaws.com"
-        }
-        Action = [
-          "kms:Encrypt",
-          "kms:Decrypt",
-          "kms:ReEncrypt*",
-          "kms:GenerateDataKey*",
-          "kms:DescribeKey"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
-}
-
-# Create an Alias so it's easy to identify in the Console
-resource "aws_kms_alias" "main" {
-  name          = "alias/${var.project_name}-kms"
-  target_key_id = aws_kms_key.main.key_id
-}

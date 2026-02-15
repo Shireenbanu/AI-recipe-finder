@@ -8,7 +8,7 @@ resource "aws_ecr_repository" "app" {
   image_scanning_configuration {
     scan_on_push = true
   }
-  
+
   encryption_configuration {
     encryption_type = "KMS"
     kms_key         = aws_kms_key.main.arn # <--- Link the key
@@ -69,4 +69,73 @@ resource "aws_iam_role_policy" "ecs_task_policy" {
       }
     ]
   })
+}
+
+
+# Get current AWS Account ID
+data "aws_caller_identity" "current" {}
+
+resource "aws_kms_key" "main" {
+  description             = "KMS key for ECR and CloudWatch Logs"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      # 1. Allow the Root User (Account Admin) full access so you don't get locked out
+      {
+        Sid    = "Enable IAM User Permissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      # 2. Allow CloudWatch Logs to use the key
+      {
+        Sid    = "Allow CloudWatch Logs"
+        Effect = "Allow"
+        Principal = {
+          Service = "logs.${var.aws_region}.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt*",
+          "kms:Decrypt*",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:Describe*"
+        ]
+        Resource = "*"
+        Condition = {
+          ArnLike = {
+            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:*"
+          }
+        }
+      },
+      # 3. Allow ECR to use the key
+      {
+        Sid    = "Allow ECR to use the key"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecr.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Create an Alias so it's easy to identify in the Console
+resource "aws_kms_alias" "main" {
+  name          = "alias/${var.project_name}-kms"
+  target_key_id = aws_kms_key.main.key_id
 }
