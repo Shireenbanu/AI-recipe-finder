@@ -88,3 +88,40 @@ resource "aws_route53_hosted_zone_dnssec" "main" {
   
   depends_on = [aws_route53_key_signing_key.main]
 }
+
+# 1. Create a CloudWatch Log Group (MUST be in us-east-1)
+resource "aws_cloudwatch_log_group" "dns_query_log" {
+  provider          = aws.us_east_1 # Using the alias we set up earlier
+  name              = "/aws/route53/${var.domain_name}"
+  retention_in_days = 30
+}
+
+# 2. Add a Resource Policy to allow Route 53 to write logs
+# This is required or the logging will fail to start
+resource "aws_cloudwatch_log_resource_policy" "route53_query_logging_policy" {
+  provider        = aws.us_east_1
+  policy_name     = "route53-query-logging-policy"
+  policy_document = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "route53.amazonaws.com"
+        }
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "${aws_cloudwatch_log_group.dns_query_log.arn}:*"
+      }
+    ]
+  })
+}
+
+# 3. Enable the Query Log for your Hosted Zone (Satisfies Checkov)
+resource "aws_route53_query_log" "main" {
+  depends_on               = [aws_cloudwatch_log_resource_policy.route53_query_logging_policy]
+  cloudwatch_log_group_arn = aws_cloudwatch_log_group.dns_query_log.arn
+  zone_id                  = aws_route53_zone.main.zone_id
+}
