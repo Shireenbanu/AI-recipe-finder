@@ -1,4 +1,5 @@
 resource "aws_lb" "main" {
+  # checkov:skip=CKV_AWS_192:Application is Node.js/React; no Java/Log4j dependency.
   name               = "${var.project_name}-${var.environment}-alb"
   internal           = false
   load_balancer_type = "application"
@@ -64,7 +65,6 @@ resource "aws_lb_listener" "http" {
   }
 }
 
-# 2. HTTPS Listener - Handles secure traffic and forwards to the app
 resource "aws_lb_listener" "https" {
   load_balancer_arn = aws_lb.main.arn
   port              = "443"
@@ -78,52 +78,57 @@ resource "aws_lb_listener" "https" {
   }
 }
 
-# The S3 Bucket for Logs
 resource "aws_s3_bucket" "alb_logs" {
   bucket        = "${var.project_name}-${var.environment}-alb-logs"
   force_destroy = true
 }
 
-
-# The Policy allowing AWS to write logs to the bucket
-resource "aws_s3_bucket_policy" "alb_logs_policy" {
+resource "aws_s3_bucket_versioning" "alb_logs_versioning" {
   bucket = aws_s3_bucket.alb_logs.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          # This is the dedicated ELB Account ID for us-west-2
-        AWS = "arn:aws:iam::797873946194:root" 
-        }
-        Action = "s3:PutObject"
-        # ALB writes to a specific path structure: AWSLogs/YOUR_ACCOUNT_ID/*
-        Resource = "${aws_s3_bucket.alb_logs.arn}/*"
-      },
-      {
-        Effect = "Allow"
-        Principal = {
-          Service = "delivery.logs.amazonaws.com"
-        }
-        Action   = "s3:PutObject"
-        Resource = "${aws_s3_bucket.alb_logs.arn}/*"
-        Condition = {
-          StringEquals = {
-            "s3:x-amz-acl" = "bucket-owner-full-control"
-          }
-        }
-      },
-      {
-        Effect = "Allow"
-        Principal = {
-          Service = "delivery.logs.amazonaws.com"
-        }
-        Action   = "s3:GetBucketAcl"
-        Resource = aws_s3_bucket.alb_logs.arn
-      }
-    ]
-  })
+  versioning_configuration {
+    status = "Enabled"
+  }
 }
 
+resource "aws_s3_bucket_server_side_encryption_configuration" "alb_logs_encryption" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      # checkov:skip=CKV_AWS_145:ALB Access Logs do not support SSE-KMS; must use AES256
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "alb_logs_pab" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "alb_logs_lifecycle" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  rule {
+    id     = "log_retention"
+    status = "Enabled"
+
+    filter {
+      prefix = ""
+    }
+    expiration {
+      days = 90
+    }
+  }
+}
+
+resource "aws_s3_bucket_logging" "alb_logs_self_logging" {
+  # checkov:skip=CKV_AWS_18:This is the logging bucket itself.
+  bucket        = aws_s3_bucket.alb_logs.id
+  target_bucket = aws_s3_bucket.alb_logs.id
+  target_prefix = "log-access-logs/"
+}
