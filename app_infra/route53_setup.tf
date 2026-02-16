@@ -168,3 +168,23 @@ resource "aws_wafv2_web_acl_association" "example" {
   resource_arn = aws_lb.main.arn
   web_acl_arn  = aws_wafv2_web_acl.main.arn
 }
+
+# 1. Create the Log Group (Must start with aws-waf-logs-)
+resource "aws_cloudwatch_log_group" "waf_logs" {
+  name              = "aws-waf-logs-${var.project_name}-${var.environment}"
+  retention_in_days = 30
+}
+
+# 2. Attach the Logging Configuration to your WAF
+resource "aws_wafv2_web_acl_logging_configuration" "main" {
+  # checkov:skip=CKV_AWS_192:Application is Node.js/React; no Java/Log4j dependency.
+  log_destination_configs = [aws_cloudwatch_log_group.waf_logs.arn]
+  resource_arn            = aws_wafv2_web_acl.main.arn
+  
+  # Optional: Hide sensitive info like 'Authorization' headers from logs
+  redacted_fields {
+    single_header {
+      name = "authorization"
+    }
+  }
+}

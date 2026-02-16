@@ -1,6 +1,6 @@
 resource "aws_lb" "main" {
-  # checkov:skip=CKV_AWS_192:Application is Node.js/React; no Java/Log4j dependency.
-  name               = "${var.project_name}-${var.environment}-alb"
+# checkov:skip=CKV_AWS_192:Application is Node.js/React; no Java/Log4j dependency.
+# checkov:skip=CKV2_AWS_76:ALB does not require WAF Log4j protection for non-Java app.  name               = "${var.project_name}-${var.environment}-alb"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
@@ -79,6 +79,8 @@ resource "aws_lb_listener" "https" {
 }
 
 resource "aws_s3_bucket" "alb_logs" {
+  #checkov:skip=CKV_AWS_144: This is a log bucket for ALB. Cross-region replication is not required for temporary diagnostic logs.
+  #checkov:skip=CKV2_AWS_62:Event notifications not required for automated ALB log delivery to avoid excessive noise/cost.
   bucket        = "${var.project_name}-${var.environment}-alb-logs"
   force_destroy = true
 }
@@ -120,6 +122,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "alb_logs_lifecycle" {
     filter {
       prefix = ""
     }
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
     expiration {
       days = 90
     }
@@ -132,3 +137,5 @@ resource "aws_s3_bucket_logging" "alb_logs_self_logging" {
   target_bucket = aws_s3_bucket.alb_logs.id
   target_prefix = "log-access-logs/"
 }
+
+
