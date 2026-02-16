@@ -125,3 +125,46 @@ resource "aws_route53_query_log" "main" {
   cloudwatch_log_group_arn = aws_cloudwatch_log_group.dns_query_log.arn
   zone_id                  = aws_route53_zone.main.zone_id
 }
+
+resource "aws_wafv2_web_acl" "main" {
+  name        = "jenkins-protection"
+  scope       = "REGIONAL" # Use CLOUDFRONT for CloudFront, REGIONAL for ALB
+  
+  default_action {
+    allow {}
+  }
+
+  # Example: AWS Managed Common Rule Set
+  rule {
+    name     = "AWS-AWSManagedRulesCommonRuleSet"
+    priority = 10
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesCommonRuleSet"
+        vendor_name = "AWS"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "AWSManagedRulesCommonRuleSetMetric"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  visibility_config {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "waf-main"
+    sampled_requests_enabled   = true
+  }
+}
+
+resource "aws_wafv2_web_acl_association" "example" {
+  resource_arn = aws_lb.main.arn
+  web_acl_arn  = aws_wafv2_web_acl.main.arn
+}
