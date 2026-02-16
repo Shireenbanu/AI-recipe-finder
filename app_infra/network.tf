@@ -64,6 +64,7 @@ resource "aws_subnet" "public" {
   }
 }
 
+
 resource "aws_subnet" "private_data" {
   count             = length(var.availability_zones)
   vpc_id            = aws_vpc.main.id
