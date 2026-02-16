@@ -43,6 +43,16 @@ resource "aws_vpc" "main" {
   }
 }
 
+resource "aws_default_security_group" "default" {
+  vpc_id = aws_vpc.main.id
+
+  # No ingress {} or egress {} blocks here!
+  
+  tags = {
+    Name = "${var.project_name}-${var.environment}-default-sg-do-not-use"
+  }
+}
+
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
   

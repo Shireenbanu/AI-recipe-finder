@@ -66,6 +66,7 @@ resource "aws_iam_role_policy" "codebuild_policy" {
       },
       # 3. ECR Auth (This action does NOT support resource-level permissions and MUST use *)
       {
+        # checkov:skip=CKV_AWS_355:Wildcard is required for service-level actions that do not support resource-level constraints.
         Sid    = "AllowECRAuth"
         Effect = "Allow"
         Action = [
@@ -112,6 +113,8 @@ resource "aws_codebuild_project" "recipe_finder_build" {
     compute_type                = "BUILD_GENERAL1_SMALL"
     image                       = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
     type                        = "LINUX_CONTAINER"
+    # checkov:skip=BC-AWS-316:Privileged mode is required for Docker-in-Docker to build application images.
+    # checkov:skip=CKV_AWS_212:Docker-in-Docker requires privileged access to the host kernel.
     privileged_mode             = true  # REQUIRED for Docker builds
     image_pull_credentials_type = "CODEBUILD"
 

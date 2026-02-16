@@ -53,7 +53,6 @@ resource "aws_security_group_rule" "alb_ingress_https" {
 
 
 resource "aws_security_group_rule" "alb_egress_to_ecs" {
-  # checkov:skip=CKV_AWS_382:Full egress required for app to communicate with dynamic 3rd party endpoints and legacy internal services.
   type                     = "egress"
   description              = "To ECS Tasks"
   from_port                = var.app_port
@@ -87,6 +86,7 @@ resource "aws_security_group_rule" "db_ingress_from_ecs" {
 
 # Egress (Allow all outbound for ECS so it can pull images/updates)
 resource "aws_security_group_rule" "ecs_egress_all" {
+  # checkov:skip=CKV_AWS_382:Full egress required for app to communicate with dynamic 3rd party endpoints and legacy internal services.
   type              = "egress"
   description       = "From ECS TO internet"
   from_port         = 0
