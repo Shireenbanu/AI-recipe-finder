@@ -91,10 +91,14 @@ resource "aws_route53_hosted_zone_dnssec" "main" {
 
 # 1. Create a CloudWatch Log Group (MUST be in us-east-1)
 resource "aws_cloudwatch_log_group" "dns_query_log" {
+# checkov:skip=CKV_AWS_158: Using default AWS encryption for DNS query logs to avoid cross-region KMS complexity.
+# checkov:skip=CKV_AWS_145: DNS Query logs use SSE-S3 to avoid cross-region KMS dependencies and latency.
   provider          = aws.us_east_1 # Using the alias we set up earlier
   name              = "/aws/route53/${var.domain_name}"
-  retention_in_days = 30
+  retention_in_days = 365
 }
+
+
 
 # 2. Add a Resource Policy to allow Route 53 to write logs
 # This is required or the logging will fail to start

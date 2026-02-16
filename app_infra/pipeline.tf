@@ -32,67 +32,62 @@ resource "aws_iam_role_policy" "codebuild_policy" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      # CloudWatch Logs permissions
+      # 1. CloudWatch Logs (Restricted to this project's log group)
       {
+        Sid    = "AllowCloudWatchLogs"
         Effect = "Allow"
         Action = [
           "logs:CreateLogGroup",
           "logs:CreateLogStream",
           "logs:PutLogEvents"
         ]
-        Resource = ["*"]
+        Resource = [
+          "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/${var.project_name}-build",
+          "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/${var.project_name}-build:*"
+        ]
       },
-      # ECR permissions (for pushing Docker images)
+      # 2. ECR Write Permissions (Restricted to specific repository)
       {
+        Sid    = "AllowECRPushPull"
         Effect = "Allow"
         Action = [
-          "ecr:GetAuthorizationToken",
           "ecr:BatchCheckLayerAvailability",
           "ecr:GetDownloadUrlForLayer",
-          "ecr:GetRepositoryPolicy",
-          "ecr:DescribeRepositories",
-          "ecr:ListImages",
-          "ecr:DescribeImages",
           "ecr:BatchGetImage",
           "ecr:InitiateLayerUpload",
           "ecr:UploadLayerPart",
           "ecr:CompleteLayerUpload",
-          "ecr:PutImage"
+          "ecr:PutImage",
+          "ecr:DescribeRepositories",
+          "ecr:ListImages",
+          "ecr:DescribeImages"
         ]
-        Resource = ["*"]
+        Resource = ["arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/${var.project_name}-app"]
       },
-     {
+      # 3. ECR Auth (This action does NOT support resource-level permissions and MUST use *)
+      {
+        Sid    = "AllowECRAuth"
+        Effect = "Allow"
+        Action = [
+          "ecr:GetAuthorizationToken"
+        ]
+        Resource = "*" 
+      },
+      # 4. CodeBuild Webhook & Connection (Already restricted in your snippet)
+      {
+        Sid    = "AllowCodeBuildAndConnections"
         Effect = "Allow"
         Action = [
           "codebuild:CreateWebhook",
           "codebuild:DeleteWebhook",
           "codebuild:UpdateWebhook",
-          "codebuild:ListWebhooks"
+          "codebuild:ListWebhooks",
+          "codestar-connections:UseConnection"
         ]
         Resource = [
-          "arn:aws:codebuild:us-west-2:045615334997:project/recipe-finder-build"
+          "arn:aws:codebuild:${var.aws_region}:${data.aws_caller_identity.current.account_id}:project/${var.project_name}-build",
+          "arn:aws:codestar-connections:${var.aws_region}:${data.aws_caller_identity.current.account_id}:connection/*"
         ]
-      },
-      # CodeStar connection permissions
-      {
-        Effect = "Allow"
-        Action = [
-          "codestar-connections:UseConnection",
-          "codestar-connections:GetConnection",
-          "codestar-connections:ListConnections",
-          "codestar-connections:PassConnection",
-        
-        ]
-        Resource =  "arn:aws:codestar-connections:us-west-2:045615334997:connection/*"
-      },
-      # Get ECR repository info
-      {
-        Effect = "Allow"
-        Action = [
-          "ecr:DescribeRepositories",
-          "ecr:ListImages"
-        ]
-        Resource = "*"
       }
     ]
   })

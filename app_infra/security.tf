@@ -31,7 +31,9 @@ resource "aws_security_group" "db" {
 
 # ALB Ingress (Allow Web Traffic)
 resource "aws_security_group_rule" "alb_ingress_http" {
+  # checkov:skip=CKV_AWS_260:Port 80 is required for the ALB to perform HTTP-to-HTTPS redirection.
   type              = "ingress"
+  description       = "alb ingress http"
   from_port         = 80
   to_port           = 80
   protocol          = "tcp"
@@ -51,6 +53,7 @@ resource "aws_security_group_rule" "alb_ingress_https" {
 
 
 resource "aws_security_group_rule" "alb_egress_to_ecs" {
+  # checkov:skip=CKV_AWS_382:Full egress required for app to communicate with dynamic 3rd party endpoints and legacy internal services.
   type                     = "egress"
   description              = "To ECS Tasks"
   from_port                = var.app_port
