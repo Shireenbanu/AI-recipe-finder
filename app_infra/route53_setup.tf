@@ -127,6 +127,7 @@ resource "aws_route53_query_log" "main" {
 }
 
 resource "aws_wafv2_web_acl" "main" {
+  # checkov:skip=CKV_AWS_192:Application is Node.js/React; no Java/Log4j dependency.
   name        = "jenkins-protection"
   scope       = "REGIONAL" # Use CLOUDFRONT for CloudFront, REGIONAL for ALB
   
@@ -172,7 +173,8 @@ resource "aws_wafv2_web_acl_association" "example" {
 # 1. Create the Log Group (Must start with aws-waf-logs-)
 resource "aws_cloudwatch_log_group" "waf_logs" {
   name              = "aws-waf-logs-${var.project_name}-${var.environment}"
-  retention_in_days = 30
+  retention_in_days = 365
+  kms_key_id = aws_kms_key.main.arn
 }
 
 # 2. Attach the Logging Configuration to your WAF

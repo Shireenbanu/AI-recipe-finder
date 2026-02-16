@@ -155,6 +155,7 @@ resource "aws_kms_key_policy" "main_policy" {
         ]
         Resource = [aws_secretsmanager_secret.gemini_key.arn]
       }
+
     ]
   })
 }
