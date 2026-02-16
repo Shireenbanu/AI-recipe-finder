@@ -63,6 +63,7 @@ resource "aws_security_group_rule" "alb_egress_to_ecs" {
 # ECS Ingress (Allow traffic ONLY from ALB)
 resource "aws_security_group_rule" "ecs_ingress_from_alb" {
   type                     = "ingress"
+  description              = "ecs ingress from alb"
   from_port                = var.app_port
   to_port                  = var.app_port
   protocol                 = "tcp"
@@ -73,6 +74,7 @@ resource "aws_security_group_rule" "ecs_ingress_from_alb" {
 # DB Ingress (Allow traffic ONLY from ECS)
 resource "aws_security_group_rule" "db_ingress_from_ecs" {
   type                     = "ingress"
+  description              = "From ECS to db"
   from_port                = 5432
   to_port                  = 5432
   protocol                 = "tcp"
@@ -83,6 +85,7 @@ resource "aws_security_group_rule" "db_ingress_from_ecs" {
 # Egress (Allow all outbound for ECS so it can pull images/updates)
 resource "aws_security_group_rule" "ecs_egress_all" {
   type              = "egress"
+  description       = "From ECS TO internet"
   from_port         = 0
   to_port           = 0
   protocol          = "-1"

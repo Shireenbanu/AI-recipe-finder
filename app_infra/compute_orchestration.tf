@@ -79,8 +79,9 @@ resource "aws_lb_listener" "https" {
 }
 
 resource "aws_s3_bucket" "alb_logs" {
-  #checkov:skip=CKV_AWS_144: This is a log bucket for ALB. Cross-region replication is not required for temporary diagnostic logs.
-  #checkov:skip=CKV2_AWS_62:Event notifications not required for automated ALB log delivery to avoid excessive noise/cost.
+  # checkov:skip=CKV_AWS_144: Cross-region replication not required for diagnostic logs.
+  # checkov:skip=CKV2_AWS_62: Event notifications too noisy for high-traffic ALB logs.
+  # checkov:skip=CKV_AWS_18: This is the logging bucket; self-logging not required.
   bucket        = "${var.project_name}-${var.environment}-alb-logs"
   force_destroy = true
 }
