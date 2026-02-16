@@ -150,3 +150,30 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+
+resource "aws_kms_key" "dnssec" {
+  provider = aws.us_east_1
+  customer_master_key_spec = "ECC_NIST_P256"
+  key_usage                = "SIGN_VERIFY"
+  description              = "KMS Key for Route 53 DNSSEC"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EnableRootAccess"
+        Effect = "Allow"
+        Principal = { AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root" }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowRoute53DNSSEC"
+        Effect = "Allow"
+        Principal = { Service = "dnssec-route53.amazonaws.com" }
+        Action   = ["kms:DescribeKey", "kms:GetPublicKey", "kms:Sign"]
+        Resource = "*"
+      }
+    ]
+  })
+}

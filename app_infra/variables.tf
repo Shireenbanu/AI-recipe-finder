@@ -33,8 +33,3 @@ variable "app_port" {
   default = 80
 }
 
-variable "db_password" {
-  description = "Master password for RDS"
-  type        = string
-  sensitive   = true
-}

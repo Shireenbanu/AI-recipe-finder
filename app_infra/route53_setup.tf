@@ -69,3 +69,22 @@ resource "aws_route53_record" "www" {
     evaluate_target_health = true
   }
 }
+
+# 2. Create the Key Signing Key (KSK)
+resource "aws_route53_key_signing_key" "main" {
+  provider = aws.us_east_1 
+  
+  hosted_zone_id             = aws_route53_zone.main.id
+  key_management_service_arn = aws_kms_key.dnssec.arn
+  name                       = "ksk-${var.project_name}"
+  status                     = "ACTIVE"
+}
+
+# 3. Enable DNSSEC Signing
+resource "aws_route53_hosted_zone_dnssec" "main" {
+  provider = aws.us_east_1
+  
+  hosted_zone_id = aws_route53_key_signing_key.main.hosted_zone_id
+  
+  depends_on = [aws_route53_key_signing_key.main]
+}
