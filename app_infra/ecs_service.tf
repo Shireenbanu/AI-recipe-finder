@@ -91,7 +91,7 @@ resource "aws_ecs_task_definition" "app" {
 # 2. CloudWatch Log Group (Must exist for logs to work)
 resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/${var.project_name}-${var.environment}"
-  retention_in_days = 7
+  retention_in_days = 365
   kms_key_id        = aws_kms_key.main.arn 
 }
 
@@ -106,6 +106,8 @@ resource "aws_ecs_service" "app" {
   network_configuration {
     subnets          = aws_subnet.public[*].id
     security_groups  = [aws_security_group.ecs_tasks.id]
+    # checkov:skip=BC-AWS-333:Public IP is required to avoid NAT Gateway costs ($32/mo).
+    # checkov:skip=CKV_AWS_97:Public IP is required to pull ECR images and call Gemini API without a NAT Gateway.
     assign_public_ip = true # Required since they are in public subnets
   }
 
