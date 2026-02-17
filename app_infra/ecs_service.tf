@@ -74,13 +74,7 @@ resource "aws_ecs_task_definition" "app" {
       }
     }
 
-     healthCheck = {
-      command     = ["CMD-SHELL", "curl -f http://localhost:8080/ || exit 1"]
-      interval    = 30
-      timeout     = 5
-      retries     = 3
-      startPeriod = 60
-    }
+
   tags = {
     Name = "${var.project_name}-${var.environment}-task-def"
   }
@@ -126,7 +120,7 @@ resource "aws_ecs_service" "app" {
   desired_count   = 1
   launch_type     = "FARGATE"
   enable_execute_command = true
-
+  health_check_grace_period_seconds = 60 
   network_configuration {
     subnets          = aws_subnet.public[*].id
     security_groups  = [aws_security_group.ecs_tasks.id]
