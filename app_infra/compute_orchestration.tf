@@ -79,9 +79,10 @@ resource "aws_lb_listener" "https" {
 }
 
 resource "aws_s3_bucket" "alb_logs" {
-  # checkov:skip=CKV_AWS_144: Cross-region replication not required for diagnostic logs.
-  # checkov:skip=CKV2_AWS_62: Event notifications too noisy for high-traffic ALB logs.
-  # checkov:skip=CKV_AWS_18: This is the logging bucket; self-logging not required.
+  # checkov:skip=CKV_AWS_145:ALB access logs do not support SSE-KMS; they require SSE-S3 (AES256) for delivery.
+  # checkov:skip=CKV_AWS_144:Cross-region replication not required for diagnostic logs.
+  # checkov:skip=CKV2_AWS_62:Event notifications too noisy for high-traffic ALB logs.
+  # checkov:skip=CKV_AWS_18:This is the logging bucket; self-logging not required.
   bucket        = "${var.project_name}-${var.environment}-alb-logs"
   force_destroy = true
 }

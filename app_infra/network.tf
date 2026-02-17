@@ -123,6 +123,7 @@ resource "aws_route_table_association" "private_data" {
 resource "aws_cloudwatch_log_group" "vpc_flow_log" {
   name              = "/aws/vpc-flow-logs/${var.project_name}-${var.environment}"
   retention_in_days = 365 # Satisfies BC-AWS-338 (1-year retention)
+  kms_key_id        = aws_kms_key.main.arn
 }
 
 # 2. Create an IAM Role for the Flow Log service

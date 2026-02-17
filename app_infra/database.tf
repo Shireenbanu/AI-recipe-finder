@@ -47,6 +47,8 @@ resource "aws_iam_role_policy_attachment" "rds_monitoring" {
 # 2. RDS Instance (PostgreSQL)
 # ----------------------------------------
 resource "aws_db_instance" "recipe_db" {
+   # checkov:skip=BC-AWS-354:KMS key for Performance Insights is immutable after creation. Using default AWS key.
+  # checkov:skip=CKV_AWS_133:Cannot update Performance Insights KMS key on existing DB.
   identifier        = "${var.project_name}-${var.environment}-db"
   engine            = "postgres"
   engine_version    = "15"
@@ -59,7 +61,6 @@ resource "aws_db_instance" "recipe_db" {
   manage_master_user_password = true
   db_subnet_group_name        = aws_db_subnet_group.main.name
   vpc_security_group_ids      = [aws_security_group.db.id]
-
   publicly_accessible = false # Keep it in the private subnet
   skip_final_snapshot = true  # Set to false for production use
   multi_az            = true  # High availability for your prod environment

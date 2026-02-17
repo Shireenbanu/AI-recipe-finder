@@ -80,8 +80,9 @@ resource "aws_kms_key" "main" {
   enable_key_rotation     = true
 }
 
-#checkov:skip=CKV2_AWS_57:Gemini API key rotated manually in Google Console, not AWS
 resource "aws_secretsmanager_secret" "gemini_key" {
+  # checkov:skip=CKV2_AWS_57:Rotation must be performed manually in Google Console; automatic AWS rotation is not supported for external APIs.
+  # checkov:skip=BC-AWS-2-57:External Google API key managed outside of AWS.
   name        = "${var.project_name}/gemini-api-key"
   description = "Gemini API Key - Rotate manually in Google Console"
   kms_key_id =  aws_kms_key.main.arn

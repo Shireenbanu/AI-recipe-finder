@@ -97,6 +97,9 @@ resource "aws_cloudwatch_log_group" "ecs" {
 
 # 3. ECS Service (The Process)
 resource "aws_ecs_service" "app" {
+  # checkov:skip=BC-AWS-333:Public IP is required to avoid NAT Gateway costs ($32/mo).
+  # checkov:skip=CKV_AWS_97:Public IP is required to pull ECR images and call Gemini API without a NAT Gateway.
+ 
   name            = "${var.project_name}-${var.environment}-service"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.app.arn
@@ -106,9 +109,7 @@ resource "aws_ecs_service" "app" {
   network_configuration {
     subnets          = aws_subnet.public[*].id
     security_groups  = [aws_security_group.ecs_tasks.id]
-    # checkov:skip=BC-AWS-333:Public IP is required to avoid NAT Gateway costs ($32/mo).
-    # checkov:skip=CKV_AWS_97:Public IP is required to pull ECR images and call Gemini API without a NAT Gateway.
-    assign_public_ip = true # Required since they are in public subnets
+   assign_public_ip = true # Required since they are in public subnets
   }
 
   load_balancer {
