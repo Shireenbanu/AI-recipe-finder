@@ -1,57 +1,57 @@
 # --- STAGE 1: Build the React Frontend ---
 # checkov:skip=CKV_DOCKER_2:Healthcheck is managed at the AWS ALB Target Group level.
 # checkov:skip=CKV_DOCKER_3:User permissions are enforced at the orchestrator (ECS) level.
+# --- STAGE 1: Build & Dependencies ---
 FROM public.ecr.aws/docker/library/node:20-alpine AS builder
 WORKDIR /app
 
-# 1. Copy root package files to handle scripts
+# Install build dependencies
 COPY package*.json ./
-
-# 2. Copy client package files specifically
 COPY client/package*.json ./client/
+RUN npm install && npm run client:install
 
-# 3. Install ALL dependencies (Root + Client)
-# This ensures "cd client && npm install" works
-RUN npm install
-RUN npm run client:install
-
-# 4. Copy the rest of the source code
+# Copy source and build
 COPY . .
-
-# 5. Build the React app (creates client/dist)
 RUN npm run client:build
-
+# Prune devDependencies to keep the image small and secure
+RUN npm prune --production
 
 # --- STAGE 2: Final Production Image ---
 FROM public.ecr.aws/docker/library/node:20-alpine
-WORKDIR /app
 
-# Install Nginx to serve the static frontend
+# 1. Install Nginx
 RUN apk add --no-cache nginx curl
 
-# Copy Backend node_modules and code from builder
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/server.mjs ./
-COPY --from=builder /app/routes ./routes
-COPY --from=builder /app/controllers ./controllers
-COPY --from=builder /app/scripts ./scripts
-COPY --from=builder /app/services ./services
-COPY --from=builder /app/models ./models
-COPY --from=builder /app/config ./config
-COPY --from=builder /app/middlewares ./middlewares
+# 2. Create non-root user for production
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
-# COPY . .
+WORKDIR /app
 
-# Copy the React Build to Nginx's default folder
-COPY --from=builder /app/client/dist /usr/share/nginx/html
+# 3. Copy only what is needed from builder
+# Change ownership during copy to save space/time
+COPY --from=builder --chown=appuser:appgroup /app/node_modules ./node_modules
+COPY --from=builder --chown=appuser:appgroup /app/package*.json ./
+COPY --from=builder --chown=appuser:appgroup /app/server.mjs ./
+COPY --from=builder --chown=appuser:appgroup /app/routes ./routes
+COPY --from=builder --chown=appuser:appgroup /app/controllers ./controllers
+COPY --from=builder --chown=appuser:appgroup /app/scripts ./scripts
+COPY --from=builder --chown=appuser:appgroup /app/services ./services
+COPY --from=builder --chown=appuser:appgroup /app/models ./models
+COPY --from=builder --chown=appuser:appgroup /app/config ./config
+COPY --from=builder --chown=appuser:appgroup /app/middlewares ./middlewares
 
-# Copy your Nginx config
-COPY nginx.conf /etc/nginx/http.d/default.conf
+# 4. Copy Frontend to Nginx path
+COPY --from=builder --chown=appuser:appgroup /app/client/dist /usr/share/nginx/html
 
-# Expose Port 80 for Nginx
+# 5. Fix Nginx Permissions (Crucial for Non-Root)
+# Nginx needs to write to these folders, which root usually owns
+RUN touch /var/run/nginx.pid && \
+    chown -R appuser:appgroup /var/run/nginx.pid /var/lib/nginx /var/log/nginx /etc/nginx
+
+# 6. Switch to Non-Root User
+USER appuser
+
 EXPOSE 80
 
-# Use JSON format for CMD (Fixes your Warning)
-# This starts Nginx in the background and Node in the foreground
+# JSON format CMD
 CMD ["sh", "-c", "nginx && node server.mjs"]

@@ -2,14 +2,21 @@ provider "aws" {
   region = "us-west-2"
 }
 
+variable "aws_region" {
+  type    = string
+  default = "us-west-2"
+}
+
+data "aws_caller_identity" "current" {}
+
 resource "aws_iam_role" "jenkins_role" {
   name = "jenkins-management-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
       Principal = { Service = "ec2.amazonaws.com" }
     }]
   })
@@ -25,6 +32,34 @@ resource "aws_iam_role_policy_attachment" "jenkins_ssm" {
   role       = aws_iam_role.jenkins_role.name
 }
 
+resource "aws_iam_role_policy" "jenkins_ecs_update_only" {
+  name = "JenkinsECSUpdatePolicy"
+  role = aws_iam_role.jenkins_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ecs:DescribeTaskDefinition",
+          "ecs:RegisterTaskDefinition",
+          "ecs:UpdateService",
+          "iam:PassRole" 
+        ]
+        Resource = "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:service/recipe-finder-prod-cluster/recipe-finder-prod-service"
+
+      }
+    ]
+  })
+}
+
+# Attach the ECR PowerUser policy to your existing Jenkins role
+resource "aws_iam_role_policy_attachment" "jenkins_ecr_access" {
+  role       = aws_iam_role.jenkins_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
+}
+
 resource "aws_security_group" "jenkins_sg" {
   name        = "jenkins-sg"
   description = "Allow SSH and Jenkins UI"
@@ -33,14 +68,14 @@ resource "aws_security_group" "jenkins_sg" {
     from_port   = 8080
     to_port     = 8080
     protocol    = "tcp"
-    cidr_blocks = ["50.52.115.151/32"] 
+    cidr_blocks = ["50.52.115.151/32"]
   }
 
   ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["50.52.115.151/32"] 
+    cidr_blocks = ["50.52.115.151/32"]
   }
 
   egress {
@@ -67,12 +102,51 @@ data "aws_ami" "ubuntu" {
   }
 }
 
+resource "aws_iam_role_policy" "jenkins_ecs_deploy_policy" {
+  name = "JenkinsECSDeployPolicy"
+  role = aws_iam_role.jenkins_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        # These actions require "*" to function properly
+        Effect   = "Allow"
+        Action   = [
+          "ecs:DescribeTaskDefinition",
+          "ecs:RegisterTaskDefinition"
+        ]
+        Resource = "*" 
+      },
+      {
+        # This action CAN be restricted to your specific cluster/service
+        Effect   = "Allow"
+        Action   = [
+          "ecs:UpdateService"
+        ]
+        Resource = [
+            "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:service/recipe-finder-prod-cluster/recipe-finder-prod-service",
+            "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:cluster/recipe-finder-prod-cluster"
+        ]
+      },
+      {
+        Effect   = "Allow"
+        Action   = "iam:PassRole"
+        Resource = [
+          "arn:aws:iam::045615334997:role/recipe-finder-prod-ecs-task-execution-role", 
+          "arn:aws:iam::045615334997:role/recipe-finder-prod-ecs-task-role" 
+        ]
+      }
+    ]
+  })
+}
+
 resource "aws_instance" "jenkins_server" {
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = "t3.medium"
   iam_instance_profile   = aws_iam_instance_profile.jenkins_profile.name
   vpc_security_group_ids = [aws_security_group.jenkins_sg.id]
-  
+
   user_data = <<-EOF
 #!/bin/bash
 exec > >(tee /var/log/user-data.log) 2>&1
@@ -127,8 +201,22 @@ echo "=== Installing Syft & Grype ==="
 curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
 curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
 
+# Update and install unzip
+sudo apt update
+sudo apt install unzip -y
+sudo apt install -y jq
+
+# Download the AWS CLI v2 installer
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+
+# Unzip and install
+unzip awscliv2.zip
+sudo ./aws/install
+
+# Verify it works
+aws --version
 echo "=== Setup Completed Successfully ==="
 EOF
-  
+
   tags = { Name = "Jenkins-Ubuntu-Management-Server" }
 }
