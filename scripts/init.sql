@@ -87,3 +87,5 @@ INSERT INTO medical_conditions (name, description, recommended_nutrients) VALUES
     ('Diabetes Type 2', 'Metabolic disorder affecting blood sugar', '{"fiber": "high", "complex_carbs": "medium", "simple_sugars": "low"}'),
     ('Hypertension', 'High blood pressure', '{"potassium": "high", "sodium": "low", "fiber": "medium"}')
 ON CONFLICT (name) DO NOTHING;
+
+ALTER TABLE users ADD COLUMN lab_reports JSONB DEFAULT '[]'::jsonb;

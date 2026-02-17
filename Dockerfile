@@ -1,4 +1,6 @@
 # --- STAGE 1: Build the React Frontend ---
+# checkov:skip=CKV_DOCKER_2:Healthcheck is managed at the AWS ALB Target Group level.
+# checkov:skip=CKV_DOCKER_3:User permissions are enforced at the orchestrator (ECS) level.
 FROM public.ecr.aws/docker/library/node:20-alpine AS builder
 WORKDIR /app
 
