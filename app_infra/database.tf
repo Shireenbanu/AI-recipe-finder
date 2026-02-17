@@ -15,6 +15,11 @@ resource "aws_db_parameter_group" "recipe_db_params" {
   family = "postgres15"
 
   parameter {
+    name  = "rds.force_ssl"
+    value = "1"
+  }
+
+  parameter {
     name  = "log_statement"
     value = "all" # Logs all SQL statements; use "ddl" or "mod" for less noise
   }
@@ -47,9 +52,9 @@ resource "aws_iam_role_policy_attachment" "rds_monitoring" {
 # 2. RDS Instance (PostgreSQL)
 # ----------------------------------------
 resource "aws_db_instance" "recipe_db" {
-   # checkov:skip=BC-AWS-354:KMS key for Performance Insights is immutable after creation. Using default AWS key.
-  # checkov:skip=CKV_AWS_133:Cannot update Performance Insights KMS key on existing DB.
-  identifier        = "${var.project_name}-${var.environment}-db"
+  #checkov:skip=CKV_AWS_354:KMS key for Performance Insights is immutable after creation.
+  #checkov:skip=CKV_AWS_133:Performance Insights KMS key cannot be changed on existing instances.
+  #checkov:skip=BC-AWS-354:Enforcing skip for Prisma Cloud specific ID.  identifier        = "${var.project_name}-${var.environment}-db"
   engine            = "postgres"
   engine_version    = "15"
   instance_class    = "db.t4g.micro" # Burstable arm64 (Cost-effective)
