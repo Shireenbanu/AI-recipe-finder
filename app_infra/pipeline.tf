@@ -96,8 +96,8 @@ resource "aws_iam_role_policy" "codebuild_policy" {
 
 # CodeBuild Project - Using GitHub with your existing buildspec
 resource "aws_codebuild_project" "recipe_finder_build" {
-  # checkov:skip=BC-AWS-316:Privileged mode is required for Docker-in-Docker to build application images.
-  # checkov:skip=CKV_AWS_212:Docker-in-Docker requires privileged access to the host kernel.
+  #checkov:skip=BC-AWS-316:Privileged mode is required for Docker-in-Docker to build application images.
+  #checkov:skip=CKV_AWS_212:Docker-in-Docker requires privileged access to the host kernel.
 
   name          = "recipe-finder-build"
   description   = "Build Recipe Finder Docker image"
