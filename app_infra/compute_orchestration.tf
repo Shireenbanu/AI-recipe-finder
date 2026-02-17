@@ -30,7 +30,7 @@ resource "aws_lb_target_group" "app" {
 
   health_check {
     enabled             = true
-    path                = "/"            # This matches your curl http://127.0.0.1/
+    path                = "/health"            # This matches your curl http://127.0.0.1/
     port                = 8080 # This targets Port 80
     protocol            = "HTTP"
     matcher             = "200-399" # Accepts any successful status or redirect
