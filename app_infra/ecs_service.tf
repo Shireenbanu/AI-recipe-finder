@@ -33,7 +33,6 @@ resource "aws_ecs_task_definition" "app" {
   memory                   = 1024
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_role.arn
-
   container_definitions = jsonencode([{
     name  = var.project_name
     image = "${aws_ecr_repository.app.repository_url}:latest"
@@ -76,7 +75,7 @@ resource "aws_ecs_task_definition" "app" {
     }
 
      healthCheck = {
-      command     = ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
+      command     = ["CMD-SHELL", "curl -f http://localhost:8080/ || exit 1"]
       interval    = 30
       timeout     = 5
       retries     = 3
@@ -95,6 +94,27 @@ resource "aws_cloudwatch_log_group" "ecs" {
   kms_key_id        = aws_kms_key.main.arn 
 }
 
+resource "aws_iam_role_policy" "ecs_exec_inline" {
+  name = "ecs-exec-permissions"
+  role = aws_iam_role.ecs_task_role.id # Ensure this is your TASK role, not Execution role
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 # 3. ECS Service (The Process)
 resource "aws_ecs_service" "app" {
 #checkov:skip=BC-AWS-333:Public IP required to pull ECR images without NAT Gateway costs.
@@ -105,6 +125,7 @@ resource "aws_ecs_service" "app" {
   task_definition = aws_ecs_task_definition.app.arn
   desired_count   = 1
   launch_type     = "FARGATE"
+  enable_execute_command = true
 
   network_configuration {
     subnets          = aws_subnet.public[*].id

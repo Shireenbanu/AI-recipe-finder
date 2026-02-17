@@ -64,7 +64,17 @@ RUN mkdir -p /run/nginx /var/lib/nginx/tmp /var/log/nginx && \
 
 # 7. Switch to the non-root user
 USER appuser
+FROM nginx:alpine
 
+# 1. Remove the default configuration that's causing the 404
+RUN rm /etc/nginx/http.d/default.conf
+
+# 2. Copy your custom config into that same directory
+# This ensures Nginx uses YOUR settings for port 8080
+COPY nginx.conf /etc/nginx/http.d/default.conf
+
+# 3. Copy your React/Vite build files
+COPY --from=builder /app/dist /usr/share/nginx/html
 # 8. Expose Port 8080 
 EXPOSE 8080
 

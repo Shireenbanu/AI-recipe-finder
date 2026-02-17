@@ -42,6 +42,10 @@ resource "aws_lb_target_group" "app" {
 
   deregistration_delay = 30
 
+  lifecycle {
+    create_before_destroy = true
+  }
+
   tags = {
     Name = "${var.project_name}-${var.environment}-tg"
   }
