@@ -39,8 +39,8 @@ resource "aws_ecs_task_definition" "app" {
     image = "${aws_ecr_repository.app.repository_url}:latest"
 
     portMappings = [{
-      containerPort = 80
-      hostPort      = 80
+      containerPort = 8080
+      hostPort      = 8080
       protocol      = "tcp"
     }]
 
@@ -49,7 +49,7 @@ resource "aws_ecs_task_definition" "app" {
       { name = "DB_HOST", value = aws_db_instance.recipe_db.address },
       { name = "DB_NAME", value = "recipedb" },
       { name = "DB_USER", value = "shireen_admin" },
-      { name = "PORT", value = "80" },
+      { name = "PORT", value = "8080" },
       { name = "NODE_ENV", value = var.environment },
       { name = "AWS_REGION", value = "us-west-2" },
       { name = "AWS_S3_BUCKET_NAME", value = "ai-recipe-app-uploads-2026-us-west"}
@@ -115,7 +115,7 @@ resource "aws_ecs_service" "app" {
   load_balancer {
     target_group_arn = aws_lb_target_group.app.arn
     container_name   = var.project_name
-    container_port   = 80
+    container_port   = 8080
   }
 
   

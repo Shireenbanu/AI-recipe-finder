@@ -23,7 +23,7 @@ resource "aws_lb" "main" {
 
 resource "aws_lb_target_group" "app" {
   name        = "${var.project_name}-${var.environment}-tg"
-  port        = 80
+  port        = 8080
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
   target_type = "ip"
@@ -31,7 +31,7 @@ resource "aws_lb_target_group" "app" {
   health_check {
     enabled             = true
     path                = "/"            # This matches your curl http://127.0.0.1/
-    port                = "traffic-port" # This targets Port 80
+    port                = 8080 # This targets Port 80
     protocol            = "HTTP"
     matcher             = "200-399" # Accepts any successful status or redirect
     interval            = 30

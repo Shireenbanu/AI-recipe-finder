@@ -30,6 +30,6 @@ variable "availability_zones" {
 
 variable "app_port" {
   type    = number
-  default = 80
+  default = 8080
 }
 
