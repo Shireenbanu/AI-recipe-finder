@@ -47,21 +47,27 @@ COPY --from=builder --chown=appuser:appgroup /app/middlewares ./middlewares
 # Copy the React Build to Nginx's default folder
 COPY --from=builder --chown=appuser:appgroup /app/client/dist /usr/share/nginx/html
 
-# 5. Fix Nginx Permissions for Non-Root Execution
-# We create necessary dirs and ensure appuser owns them
+# 5. CONFIGURE NGINX (The missing piece)
+# First, remove the default Alpine config
+RUN rm -f /etc/nginx/http.d/default.conf
+
+# Copy your local custom config into the container
+# This file contains your 8080 port and Gemini timeouts
+COPY nginx.conf /etc/nginx/http.d/default.conf
+
+# 6. Fix Nginx Permissions for Non-Root Execution
 RUN mkdir -p /run/nginx /var/lib/nginx/tmp /var/log/nginx && \
     chown -R appuser:appgroup /run/nginx /var/lib/nginx /var/log/nginx /etc/nginx && \
-    # Remove the 'user' directive from the main nginx.conf (can't switch users as non-root)
+    # Remove 'user' directive and fix PID path
     sed -i '/user nginx;/d' /etc/nginx/nginx.conf && \
-    # Ensure the PID file path is writable
     sed -i 's|/run/nginx.pid|/run/nginx/nginx.pid|g' /etc/nginx/nginx.conf
 
-# 6. Switch to the non-root user
+# 7. Switch to the non-root user
 USER appuser
 
-# 7. Expose Port 8080 (Non-root users cannot bind to port 80)
+# 8. Expose Port 8080 
 EXPOSE 8080
 
-# 8. Start Nginx and the Node.js server
-# Nginx runs in background, Node runs in foreground
+# 9. Start Nginx and the Node.js server
+# Using '&' ensures both start; 'nginx' is launched as a background process here
 CMD ["sh", "-c", "nginx && node server.mjs"]
