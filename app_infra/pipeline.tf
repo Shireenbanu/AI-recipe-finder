@@ -72,7 +72,7 @@ resource "aws_iam_role_policy" "codebuild_policy" {
         Action = [
           "ecr:GetAuthorizationToken"
         ]
-        Resource = "*" 
+        Resource = "*"
       },
       # 4. CodeBuild Webhook & Connection (Already restricted in your snippet)
       {
@@ -113,13 +113,15 @@ resource "aws_codebuild_project" "recipe_finder_build" {
   }
 
   environment {
-    compute_type                = "BUILD_GENERAL1_SMALL"
-    image                       = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
-    type                        = "LINUX_CONTAINER"
-    privileged_mode             = true  # REQUIRED for Docker builds
+    compute_type = "BUILD_GENERAL1_SMALL"
+    image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    type         = "LINUX_CONTAINER"
+    #checkov:skip=CKV_AWS_316:Privileged mode is required for Docker-in-Docker (building images).
+    #checkov:skip=BC-AWS-316:Mapping for Prisma Cloud ID.
+    privileged_mode             = true
     image_pull_credentials_type = "CODEBUILD"
 
-    
+
   }
 
   # Connect to GitHub - It will use the buildspec file from your repo
@@ -127,12 +129,12 @@ resource "aws_codebuild_project" "recipe_finder_build" {
     type            = "GITHUB"
     location        = "https://github.com/Shireenbanu/AI-recipe-finder.git"
     git_clone_depth = 1
-    buildspec = "buildspec.yml"
-    
+    buildspec       = "buildspec.yml"
+
     git_submodules_config {
       fetch_submodules = false
     }
-    
+
 
   }
 
