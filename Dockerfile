@@ -46,6 +46,9 @@ COPY nginx.conf /etc/nginx/http.d/default.conf
 RUN sed -i '/user nginx;/d' /etc/nginx/nginx.conf && \
     sed -i 's|/run/nginx.pid|/run/nginx/nginx.pid|g' /etc/nginx/nginx.conf
 
+RUN apk del curl && \
+    rm -rf /var/cache/apk/* /root/.npm /tmp/*    
+
 USER appuser
 EXPOSE 8080
 
