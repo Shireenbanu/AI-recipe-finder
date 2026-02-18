@@ -1,11 +1,11 @@
 resource "aws_ecs_cluster" "main" {
   name = "${var.project_name}-${var.environment}-cluster"
-  
+
   setting {
     name  = "containerInsights"
     value = "enabled"
   }
-  
+
   tags = {
     Name = "${var.project_name}-${var.environment}-ecs-cluster"
   }
@@ -13,9 +13,9 @@ resource "aws_ecs_cluster" "main" {
 
 resource "aws_ecs_cluster_capacity_providers" "main" {
   cluster_name = aws_ecs_cluster.main.name
-  
+
   capacity_providers = ["FARGATE", "FARGATE_SPOT"]
-  
+
   default_capacity_provider_strategy {
     base              = 1
     weight            = 100
@@ -53,19 +53,19 @@ resource "aws_ecs_task_definition" "app" {
       { name = "PORT", value = "8080" },
       { name = "NODE_ENV", value = var.environment },
       { name = "AWS_REGION", value = "us-west-2" },
-      { name = "AWS_S3_BUCKET_NAME", value = "ai-recipe-app-uploads-2026-us-west"}
+      { name = "AWS_S3_BUCKET_NAME", value = "ai-recipe-app-uploads-2026-us-west" }
     ]
 
-  secrets = [
-        {
-          name      = "DB_PASSWORD"
-          valueFrom = "${aws_db_instance.recipe_db.master_user_secret[0].secret_arn}:password::"
-        },
-        {
-          name      = "GEMINI_API_KEY"
-          valueFrom = "${aws_secretsmanager_secret.gemini_key.arn}:GEMINI_API_KEY::"
-        }
-      ]
+    secrets = [
+      {
+        name      = "DB_PASSWORD"
+        valueFrom = "${aws_db_instance.recipe_db.master_user_secret[0].secret_arn}:password::"
+      },
+      {
+        name      = "GEMINI_API_KEY"
+        valueFrom = "${aws_secretsmanager_secret.gemini_key.arn}:GEMINI_API_KEY::"
+      }
+    ]
 
     logConfiguration = {
       logDriver = "awslogs"
@@ -76,33 +76,24 @@ resource "aws_ecs_task_definition" "app" {
       }
     }
 
-    "linuxParameters": {
-    "tmpfs": [
-        {
-            "containerPath": "/tmp",
-            "size": 64,
-            "mountOptions": ["noexec", "nosuid", "nodev"]
-        },
-        {
-            "containerPath": "/app/logs",
-            "size": 32,
-            "mountOptions": ["noexec", "nosuid", "nodev"]
-        },
-        {
-            "containerPath": "/run/nginx",
-            "size": 16
-        },
-        {
-            "containerPath": "/var/lib/amazon/ssm",
-            "size": 16
-        }
-    ]
-}
+    "linuxParameters" : {
+
+      tmpfs = [
+        { containerPath = "/tmp", size = 64, mountOptions = ["noexec", "nosuid", "nodev"] },
+        { containerPath = "/app/logs", size = 64, mountOptions = ["noexec", "nosuid", "nodev"] },
+        { containerPath = "/run/nginx", size = 16 },
+        { containerPath = "/var/lib/amazon/ssm", size = 16 },
+        { containerPath = "/var/lib/nginx/tmp", size = 32 },
+        { containerPath = "/var/lib/nginx/logs", size = 16 },
+        { containerPath = "/var/cache/nginx", size = 32 },
+      ]
+      readonlyRootFilesystem = true
+    }
 
 
-  tags = {
-    Name = "${var.project_name}-${var.environment}-task-def"
-  }
+    tags = {
+      Name = "${var.project_name}-${var.environment}-task-def"
+    }
   }])
 }
 
@@ -110,7 +101,7 @@ resource "aws_ecs_task_definition" "app" {
 resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/${var.project_name}-${var.environment}"
   retention_in_days = 365
-  kms_key_id        = aws_kms_key.main.arn 
+  kms_key_id        = aws_kms_key.main.arn
 }
 
 resource "aws_iam_role_policy" "ecs_exec_inline" {
@@ -136,20 +127,20 @@ resource "aws_iam_role_policy" "ecs_exec_inline" {
 
 # 3. ECS Service (The Process)
 resource "aws_ecs_service" "app" {
-#checkov:skip=BC-AWS-333:Public IP required to pull ECR images without NAT Gateway costs.
-#checkov:skip=CKV_AWS_333:Public IP required to call Gemini API without NAT Gateway.
+  #checkov:skip=BC-AWS-333:Public IP required to pull ECR images without NAT Gateway costs.
+  #checkov:skip=CKV_AWS_333:Public IP required to call Gemini API without NAT Gateway.
 
-  name            = "${var.project_name}-${var.environment}-service"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.app.arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
-  enable_execute_command = true
-  health_check_grace_period_seconds = 600 
+  name                              = "${var.project_name}-${var.environment}-service"
+  cluster                           = aws_ecs_cluster.main.id
+  task_definition                   = aws_ecs_task_definition.app.arn
+  desired_count                     = 1
+  launch_type                       = "FARGATE"
+  enable_execute_command            = true
+  health_check_grace_period_seconds = 600
   network_configuration {
     subnets          = aws_subnet.public[*].id
     security_groups  = [aws_security_group.ecs_tasks.id]
-   assign_public_ip = true # Required since they are in public subnets
+    assign_public_ip = true # Required since they are in public subnets
   }
 
   load_balancer {
@@ -158,7 +149,7 @@ resource "aws_ecs_service" "app" {
     container_port   = 8080
   }
 
-  
+
 
   depends_on = [aws_lb_listener.http]
 }
