@@ -36,28 +36,7 @@ resource "aws_ecs_task_definition" "app" {
   container_definitions = jsonencode([{
     name  = var.project_name
     image = "${aws_ecr_repository.app.repository_url}:latest"
-    readonlyRootFilesystem   = true
-    linuxParameters = {
-      tmpfs = [
-        {
-          # This allows Splunk to write to /app/logs/splunk.log in RAM
-          containerPath = "/app/logs"
-          size          = 32 # MB
-          mountOptions  = ["noexec", "nosuid", "nodev"]
-        },
-        {
-          # Required for Nginx PID and Temp files
-          containerPath = "/tmp"
-          size          = 64
-          mountOptions  = ["noexec", "nosuid", "nodev"]
-        },
-        {
-          containerPath = "/run/nginx"
-          size          = 16
-        }
-      ]
-    }
-    
+
     portMappings = [{
       containerPort = 8080
       hostPort      = 8080
