@@ -20,17 +20,17 @@ RUN apk add --no-cache nginx supervisor
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 WORKDIR /app
 
-# 3. Pre-create writeable paths (will be overlaid by tmpfs in Fargate)
+# 3. Pre-create writeable paths
 RUN mkdir -p \
     /app/logs \
-    /run/nginx \
-    /var/lib/nginx/tmp \
-    /var/log/nginx \
-    /var/cache/nginx \
-    /tmp && \
+    /tmp/client_body \
+    /tmp/proxy_temp \
+    /tmp/fastcgi_temp \
+    /tmp/uwsgi_temp \
+    /tmp/scgi_temp \
+    /var/cache/nginx && \
     chown -R appuser:appgroup \
     /app \
-    /run/nginx \
     /var/lib/nginx \
     /var/log/nginx \
     /var/cache/nginx \
@@ -50,18 +50,17 @@ COPY --from=builder --chown=appuser:appgroup /app/config ./config
 # 5. Copy frontend build
 COPY --from=builder --chown=appuser:appgroup /app/client/dist /usr/share/nginx/html
 
-# 6. Configure nginx
+# 6. Configure nginx server block
 COPY --chown=appuser:appgroup nginx.conf /etc/nginx/http.d/default.conf
 
-# 7. Fix nginx for non-root
-
-
+# 7. Fix nginx.conf for non-root + redirect all paths to /tmp
 RUN sed -i '/user nginx;/d' /etc/nginx/nginx.conf && \
-    sed -i 's|worker_processes auto;|worker_processes auto;\npid /run/nginx/nginx.pid;|g' /etc/nginx/nginx.conf && \
+    sed -i 's|worker_processes auto;|worker_processes auto;\npid /tmp/nginx.pid;|g' /etc/nginx/nginx.conf && \
     sed -i 's|error_log /var/log/nginx/error.log warn;|error_log /tmp/nginx.error.log warn;|g' /etc/nginx/nginx.conf && \
     sed -i 's|default_type application/octet-stream;|default_type application/octet-stream;\n\tclient_body_temp_path /tmp/client_body;\n\tproxy_temp_path /tmp/proxy_temp;\n\tfastcgi_temp_path /tmp/fastcgi_temp;\n\tuwsgi_temp_path /tmp/uwsgi_temp;\n\tscgi_temp_path /tmp/scgi_temp;|g' /etc/nginx/nginx.conf && \
-    sed -i 's|access_log /var/log/nginx/access.log main;|access_log /tmp/nginx.access.log main;|g' /etc/nginx/nginx.conf    
+    sed -i 's|access_log /var/log/nginx/access.log main;|access_log /tmp/nginx.access.log main;|g' /etc/nginx/nginx.conf
 
+# 8. Supervisord config
 COPY --chown=appuser:appgroup supervisord.conf /etc/supervisord.conf
 
 # 9. Cleanup
