@@ -54,11 +54,11 @@ COPY --from=builder --chown=appuser:appgroup /app/client/dist /usr/share/nginx/h
 COPY --chown=appuser:appgroup nginx.conf /etc/nginx/http.d/default.conf
 
 # 7. Fix nginx for non-root
+
 RUN sed -i '/user nginx;/d' /etc/nginx/nginx.conf && \
-    sed -i 's|worker_processes auto;|worker_processes auto;\nuser appuser appgroup;|g' /etc/nginx/nginx.conf && \
-    sed -i 's|error_log /var/log/nginx/error.log warn;|error_log /app/logs/error.log warn;|g' /etc/nginx/nginx.conf && \
-    sed -i 's|access_log /var/log/nginx/access.log main;|access_log /app/logs/access.log main;|g' /etc/nginx/nginx.conf && \
-    sed -i 's|worker_processes auto;|worker_processes auto;\npid /run/nginx/nginx.pid;|g' /etc/nginx/nginx.conf
+    sed -i 's|worker_processes auto;|worker_processes auto;\npid /run/nginx/nginx.pid;\nclient_body_temp_path /tmp/client_body;\nproxy_temp_path /tmp/proxy_temp;\nfastcgi_temp_path /tmp/fastcgi_temp;\nuwsgi_temp_path /tmp/uwsgi_temp;\nscgi_temp_path /tmp/scgi_temp;|g' /etc/nginx/nginx.conf && \
+    sed -i 's|error_log /var/log/nginx/error.log warn;|error_log /tmp/nginx.error.log warn;|g' /etc/nginx/nginx.conf && \
+    sed -i 's|access_log /var/log/nginx/access.log main;|access_log /tmp/nginx.access.log main;|g' /etc/nginx/nginx.conf    
 # 8. Supervisord config
 COPY --chown=appuser:appgroup supervisord.conf /etc/supervisord.conf
 
