@@ -37,6 +37,8 @@ resource "aws_ecs_task_definition" "app" {
     name  = var.project_name
     image = "${aws_ecr_repository.app.repository_url}:latest"
 
+
+
     portMappings = [{
       containerPort = 8080
       hostPort      = 8080
@@ -73,6 +75,29 @@ resource "aws_ecs_task_definition" "app" {
         "awslogs-stream-prefix" = "ecs"
       }
     }
+
+    "linuxParameters": {
+    "tmpfs": [
+        {
+            "containerPath": "/tmp",
+            "size": 64,
+            "mountOptions": ["noexec", "nosuid", "nodev"]
+        },
+        {
+            "containerPath": "/app/logs",
+            "size": 32,
+            "mountOptions": ["noexec", "nosuid", "nodev"]
+        },
+        {
+            "containerPath": "/run/nginx",
+            "size": 16
+        },
+        {
+            "containerPath": "/var/lib/amazon/ssm",
+            "size": 16
+        }
+    ]
+}
 
 
   tags = {
