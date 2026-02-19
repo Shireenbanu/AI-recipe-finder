@@ -36,8 +36,8 @@ resource "aws_ecs_task_definition" "app" {
   container_definitions = jsonencode([{
     name  = var.project_name
     image = "${aws_ecr_repository.app.repository_url}:latest"
-
-
+    privileged = false
+    user       = "appuser"
 
     portMappings = [{
       containerPort = 8080
