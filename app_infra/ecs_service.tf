@@ -78,15 +78,18 @@ resource "aws_ecs_task_definition" "app" {
 
     "linuxParameters" : {
 
-tmpfs = [
-  { containerPath = "/tmp",                size = 128, mountOptions = ["noexec","nosuid","nodev"] },
-  { containerPath = "/app/logs",           size = 64,  mountOptions = ["noexec","nosuid","nodev"] },
-  { containerPath = "/var/lib/amazon/ssm", size = 16 },
-]
+      tmpfs = [
+        { containerPath = "/tmp", size = 128, mountOptions = ["noexec", "nosuid", "nodev"] },
+        { containerPath = "/app/logs", size = 64, mountOptions = ["noexec", "nosuid", "nodev"] },
+        { containerPath = "/var/lib/amazon/ssm", size = 16 },
+      ]
 
-readonlyRootFilesystem = true
       readonlyRootFilesystem = true
+
+    capabilities = { drop = ["ALL"] }
+      
     }
+   
 
 
     tags = {
