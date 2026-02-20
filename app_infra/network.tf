@@ -11,6 +11,7 @@ terraform {
   }
 }
 
+
 provider "aws" {
   region  = var.aws_region
   profile = "shireens-terminal" # Ensure this profile exists in ~/.aws/credentials
@@ -26,6 +27,7 @@ provider "aws" {
 provider "aws" {
   alias  = "us_east_1"
   region = "us-east-1"
+  profile = "shireens-terminal"
 }
 
 

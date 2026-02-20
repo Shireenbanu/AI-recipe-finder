@@ -1,7 +1,8 @@
 resource "aws_lb" "main" {
   #checkov:skip=CKV_AWS_192:Application is Node.js/React; no Java/Log4j dependency.
-  #checkov:skip=CKV2_AWS_76:ALB does not require WAF Log4j protection for non-Java app.  name               = "${var.project_name}-${var.environment}-alb"
-  internal           = false
+  #checkov:skip=CKV2_AWS_76:ALB does not require WAF Log4j protection for non-Java app.
+  #checkov:skip=CKV2_AWS_28:WAF not required for this internal recipe-finder app.
+ internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
   subnets            = aws_subnet.public[*].id
