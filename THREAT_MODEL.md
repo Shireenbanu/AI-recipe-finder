@@ -46,3 +46,18 @@ Git Leaks:
 <img width="660" height="182" alt="image" src="https://github.com/user-attachments/assets/1a8160ea-a6cd-44f6-848b-2624d4e1d577" />
 
 
+
+Threat Model for Container Hardening: 
+Please checkout the link for detailed explanation.
+
+## 🛡️ Container Hardening Matrix (The 7-Layer Defense)
+
+| Layer | Focus | Risk | Threat | Mitigation |
+| :--- | :--- | :--- | :--- | :--- |
+| **L1** | **Multi-Stage Build** | Build-time residue (compilers, `.git`, secrets) left in image. | **Lateral Movement:** Attackers use leftover tools to compile malware or pivot deeper into the network. | **Build Dirty, Run Clean:** Separate build and runtime stages; only production assets move to the final image. |
+| **L2** | **Non-Root Identity** | Containers running as `root` (UID 0) by default. | **Host Escape:** Exploits (e.g., CVE-2024-21626) allow a root process to break out and control the host. | **Ghost Accounts:** Create a system `appuser` with no shell or home directory to enforce a permission "ceiling." |
+| **L3** | **Hardened Nginx** | App requires root access to write to system paths like `/var/run`. | **Runtime Tampering:** Attackers overwrite configs or web files to serve malware or redirect traffic. | **User-Owned Paths:** Patch Nginx to use `/tmp` for PIDs/cache and `chown` those paths to the `appuser`. |
+| **L4** | **Unprivileged Manager** | Process managers (Supervisord) traditionally running with root "crowns." | **Privilege Escalation:** A hijacked manager grants the attacker "God Mode" over all managed sub-processes. | **Powerless Manager:** Run `supervisord` as `appuser` and stream logs to `stdout` to prevent local data mining. |
+| **L5** | **Immutable Filesystem** | Writable runtime layers allow attackers to modify the OS environment. | **Malware Persistence:** Attackers download web shells or scripts that survive as long as the container runs. | **The "DVD" Model:** Enable `readonlyRootFilesystem` and use `tmpfs` mounts with `noexec` to kill execution. |
+| **L6** | **Kernel Capabilities** | Granular kernel permissions (Capabilities) active by default. | **Privilege Jumping:** Attackers use `NET_RAW` or `DAC_OVERRIDE` to sniff traffic or bypass file security. | **The Blackout:** Use `drop = ["ALL"]` to zero out `CapEff` and `CapBnd`, stripping all kernel-level privileges. |
+| **L7** | **Image Signing** | Unverified images pulled from an untrusted or compromised registry. | **Supply Chain Attack:** An attacker swaps a legitimate image with a "poisoned" version containing a backdoor. | **Notation (CNCF):** Cryptographically sign images in CI/CD and verify signatures before every deployment. |
