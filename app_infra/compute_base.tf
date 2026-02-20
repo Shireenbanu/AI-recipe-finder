@@ -10,7 +10,7 @@ resource "aws_ecr_repository" "app" {
 
   encryption_configuration {
     encryption_type = "KMS"
-    kms_key         = aws_kms_key.main.arn 
+    kms_key         = aws_kms_key.main.arn
   }
 }
 
@@ -21,12 +21,12 @@ resource "aws_ecr_repository" "app" {
 # ----------------------------------------
 resource "aws_iam_role" "ecs_task_role" {
   name = "${var.project_name}-${var.environment}-ecs-task-role"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
       Principal = { Service = "ecs-tasks.amazonaws.com" }
     }]
   })
@@ -36,14 +36,14 @@ resource "aws_iam_role" "ecs_task_role" {
 resource "aws_iam_role_policy" "ecs_task_policy" {
   name = "${var.project_name}-${var.environment}-ecs-task-policy"
   role = aws_iam_role.ecs_task_role.id
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
         Sid    = "S3DataAccess"
         Effect = "Allow"
-        # List ONLY what the app actually does. 
+        # List ONLY what the app actually does.
         # s3:* is too broad for security scanners.
         Action = [
           "s3:PutObject",
@@ -85,7 +85,7 @@ resource "aws_secretsmanager_secret" "gemini_key" {
   # checkov:skip=BC-AWS-2-57:External Google API key managed outside of AWS.
   name        = "${var.project_name}/gemini-api-key"
   description = "Gemini API Key - Rotate manually in Google Console"
-  kms_key_id =  aws_kms_key.main.arn
+  kms_key_id  = aws_kms_key.main.arn
 
 }
 

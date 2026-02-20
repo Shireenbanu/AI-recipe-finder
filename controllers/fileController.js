@@ -1,9 +1,14 @@
-import * as S3Service from '../services/s3Service.js';
-import { logFileUpload, logFileUploadError, logSuspiciousFileUpload, logPerformance } from '../services/splunkLogger.js';
-import {saveFileNameForFutureUse} from '../models/User.js'
+import * as S3Service from "../services/s3Service.js";
+import {
+  logFileUpload,
+  logFileUploadError,
+  logSuspiciousFileUpload,
+  logPerformance,
+} from "../services/splunkLogger.js";
+import { saveFileNameForFutureUse } from "../models/User.js";
 export async function uploadLabReport(req, res) {
   const startTime = Date.now();
-  
+
   try {
     const { userId } = req.body;
     const file = req.file;
@@ -11,40 +16,40 @@ export async function uploadLabReport(req, res) {
     if (!userId) {
       return res.status(400).json({
         success: false,
-        error: 'User ID is required'
+        error: "User ID is required",
       });
     }
 
     if (!file) {
       return res.status(400).json({
         success: false,
-        error: 'No file uploaded'
+        error: "No file uploaded",
       });
     }
 
     // Security checks
-    const allowedTypes = ['application/pdf'];
+    const allowedTypes = ["application/pdf"];
     if (!allowedTypes.includes(file.mimetype)) {
-      logSuspiciousFileUpload(req, file, 'Invalid file type');
+      logSuspiciousFileUpload(req, file, "Invalid file type");
       return res.status(400).json({
         success: false,
-        error: 'Only PDF and image files are allowed'
+        error: "Only PDF and image files are allowed",
       });
     }
 
     // Max file size: 10MB
     if (file.size > 10 * 1024 * 1024) {
-      logSuspiciousFileUpload(req, file, 'File too large');
+      logSuspiciousFileUpload(req, file, "File too large");
       return res.status(400).json({
         success: false,
-        error: 'File size must be less than 10MB'
+        error: "File size must be less than 10MB",
       });
     }
 
     // Upload to S3
-    const result = await S3Service.uploadFile(req,file, userId);
+    const result = await S3Service.uploadFile(req, file, userId);
     // Save to user
-    saveFileNameForFutureUse(result.fileName, userId)
+    saveFileNameForFutureUse(result.fileName, userId);
 
     // Log success
     req.uploadDuration = Date.now() - startTime;
@@ -55,35 +60,42 @@ export async function uploadLabReport(req, res) {
       file: {
         fileName: file.originalname,
         fileUrl: result.fileName,
-        uploadedAt: new Date().toISOString()
-      }
+        uploadedAt: new Date().toISOString(),
+      },
     });
-
   } catch (error) {
     logFileUploadError(req, req.file, error);
-    console.error('Upload error:', error);
+    console.error("Upload error:", error);
     res.status(500).json({
       success: false,
-      error: 'Failed to upload file'
+      error: "Failed to upload file",
     });
   }
 }
 
 export async function getS3PreSignedURL(req, res) {
   const startTime = Date.now();
-  const { fileURL } = req.query; 
+  const { fileURL } = req.query;
 
   if (!fileURL) {
-    return res.status(400).json({ success: false, message: "fileURL is required" });
+    return res
+      .status(400)
+      .json({ success: false, message: "fileURL is required" });
   }
 
   try {
     const preSignedUrl = await S3Service.getSignedFileUrl(req, fileURL);
-    
+
     // Manual logPerformance for Success
-    logPerformance(req, 'S3_GENERATE_PRESIGNED_URL', Date.now() - startTime, 'SUCCESS', {
-      requested_file: fileURL
-    });
+    logPerformance(
+      req,
+      "S3_GENERATE_PRESIGNED_URL",
+      Date.now() - startTime,
+      "SUCCESS",
+      {
+        requested_file: fileURL,
+      },
+    );
 
     return res.json({
       success: true,
@@ -91,14 +103,20 @@ export async function getS3PreSignedURL(req, res) {
     });
   } catch (error) {
     // Manual logPerformance for Failure
-    logPerformance(req, 'S3_GENERATE_PRESIGNED_URL', Date.now() - startTime, 'FAILURE', {
-      error: error.message,
-      requested_file: fileURL
-    });
-    
+    logPerformance(
+      req,
+      "S3_GENERATE_PRESIGNED_URL",
+      Date.now() - startTime,
+      "FAILURE",
+      {
+        error: error.message,
+        requested_file: fileURL,
+      },
+    );
+
     return res.status(500).json({
       success: false,
-      message: "Failed to generate download link"
+      message: "Failed to generate download link",
     });
   }
 }

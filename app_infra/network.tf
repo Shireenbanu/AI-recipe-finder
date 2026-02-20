@@ -14,7 +14,7 @@ terraform {
 provider "aws" {
   region  = var.aws_region
   profile = "shireens-terminal" # Ensure this profile exists in ~/.aws/credentials
-  
+
   default_tags {
     tags = {
       Project     = var.project_name
@@ -37,7 +37,7 @@ resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
   enable_dns_support   = true
-  
+
   tags = {
     Name = "${var.project_name}-${var.environment}-vpc"
   }
@@ -47,7 +47,7 @@ resource "aws_default_security_group" "default" {
   vpc_id = aws_vpc.main.id
 
   # No ingress {} or egress {} blocks here!
-  
+
   tags = {
     Name = "${var.project_name}-${var.environment}-default-sg-do-not-use"
   }
@@ -55,7 +55,7 @@ resource "aws_default_security_group" "default" {
 
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
-  
+
   tags = {
     Name = "${var.project_name}-${var.environment}-igw"
   }
@@ -67,6 +67,7 @@ resource "aws_subnet" "public" {
   cidr_block              = cidrsubnet(var.vpc_cidr, 8, count.index)
   availability_zone       = var.availability_zones[count.index]
   map_public_ip_on_launch = false
+  
   tags = {
     Name = "${var.project_name}-${var.environment}-public-${var.availability_zones[count.index]}"
     Type = "Public"
@@ -79,7 +80,7 @@ resource "aws_subnet" "private_data" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = cidrsubnet(var.vpc_cidr, 8, count.index + 20)
   availability_zone = var.availability_zones[count.index]
-  
+
   tags = {
     Name = "${var.project_name}-${var.environment}-private-data-${var.availability_zones[count.index]}"
     Type = "Private-Data"
@@ -88,12 +89,12 @@ resource "aws_subnet" "private_data" {
 
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
-  
+
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.main.id
   }
-  
+
   tags = {
     Name = "${var.project_name}-${var.environment}-public-rt"
   }
@@ -107,7 +108,7 @@ resource "aws_route_table_association" "public" {
 
 resource "aws_route_table" "private_data" {
   vpc_id = aws_vpc.main.id
-  
+
   tags = {
     Name = "${var.project_name}-${var.environment}-private-data-rt"
   }

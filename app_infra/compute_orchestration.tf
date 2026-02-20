@@ -1,6 +1,6 @@
 resource "aws_lb" "main" {
-# checkov:skip=CKV_AWS_192:Application is Node.js/React; no Java/Log4j dependency.
-# checkov:skip=CKV2_AWS_76:ALB does not require WAF Log4j protection for non-Java app.  name               = "${var.project_name}-${var.environment}-alb"
+  # checkov:skip=CKV_AWS_192:Application is Node.js/React; no Java/Log4j dependency.
+  # checkov:skip=CKV2_AWS_76:ALB does not require WAF Log4j protection for non-Java app.  name               = "${var.project_name}-${var.environment}-alb"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
@@ -30,8 +30,8 @@ resource "aws_lb_target_group" "app" {
 
   health_check {
     enabled             = true
-    path                = "/health"            # This matches your curl http://127.0.0.1/
-    port                = 8080 # This targets Port 80
+    path                = "/health" # This matches your curl http://127.0.0.1/
+    port                = 8080      # This targets Port 80
     protocol            = "HTTP"
     matcher             = "200-399" # Accepts any successful status or redirect
     interval            = 30
@@ -143,5 +143,3 @@ resource "aws_s3_bucket_logging" "alb_logs_self_logging" {
   target_bucket = aws_s3_bucket.alb_logs.id
   target_prefix = "log-access-logs/"
 }
-
-

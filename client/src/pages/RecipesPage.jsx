@@ -1,18 +1,18 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { authFetch } from '../../services/apiClient.js';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { authFetch } from "../../services/apiClient.js";
 
 function RecipesPage() {
   const navigate = useNavigate();
-  const userId = localStorage.getItem('userId');
+  const userId = localStorage.getItem("userId");
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
 
   useEffect(() => {
     if (!userId) {
-      navigate('/signin');
+      navigate("/signin");
       return;
     }
     fetchRecommendations();
@@ -20,14 +20,16 @@ function RecipesPage() {
 
   const fetchRecommendations = async () => {
     try {
-      const response = await authFetch(`/api/recipes/recommendations?userId=${userId}`);
+      const response = await authFetch(
+        `/api/recipes/recommendations?userId=${userId}`,
+      );
       const data = await response.json();
-      
+
       if (data.success) {
         setRecipes(data.recommendations);
       }
     } catch (error) {
-      console.error('Error fetching recipes:', error);
+      console.error("Error fetching recipes:", error);
     } finally {
       setLoading(false);
     }
@@ -39,21 +41,23 @@ function RecipesPage() {
 
     setSearchLoading(true);
     try {
-      const response = await authFetch(`/api/recipes/search?q=${encodeURIComponent(searchQuery)}`);
+      const response = await authFetch(
+        `/api/recipes/search?q=${encodeURIComponent(searchQuery)}`,
+      );
       const data = await response.json();
-      
+
       if (data.success) {
         setRecipes(data.recipes);
       }
     } catch (error) {
-      console.error('Error searching recipes:', error);
+      console.error("Error searching recipes:", error);
     } finally {
       setSearchLoading(false);
     }
   };
 
   const handleReset = () => {
-    setSearchQuery('');
+    setSearchQuery("");
     setLoading(true);
     fetchRecommendations();
   };
@@ -74,7 +78,7 @@ function RecipesPage() {
       <div className="bg-white shadow-md">
         <div className="max-w-6xl mx-auto px-8 py-4">
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate("/dashboard")}
             className="text-blue-600 hover:text-blue-700"
           >
             ← Back to Dashboard
@@ -85,7 +89,9 @@ function RecipesPage() {
       <div className="max-w-6xl mx-auto px-8 py-12">
         <h1 className="text-3xl font-bold mb-2">Healthy Recipes</h1>
         <p className="text-gray-600 mb-8">
-          {searchQuery ? 'Search results' : 'Recommended for you based on your health needs'}
+          {searchQuery
+            ? "Search results"
+            : "Recommended for you based on your health needs"}
         </p>
 
         {/* Search Box */}
@@ -103,7 +109,7 @@ function RecipesPage() {
               disabled={searchLoading}
               className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
             >
-              {searchLoading ? 'Searching...' : 'Search'}
+              {searchLoading ? "Searching..." : "Search"}
             </button>
             {searchQuery && (
               <button
@@ -126,11 +132,16 @@ function RecipesPage() {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {recipes.map((recipe) => (
-              <div key={recipe.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition">
+              <div
+                key={recipe.id}
+                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition"
+              >
                 <div className="p-6">
                   <h3 className="text-xl font-semibold mb-2">{recipe.title}</h3>
-                  <p className="text-gray-600 text-sm mb-4">{recipe.description}</p>
-                  
+                  <p className="text-gray-600 text-sm mb-4">
+                    {recipe.description}
+                  </p>
+
                   <div className="flex gap-4 text-sm text-gray-500 mb-4">
                     <span>⏱️ {recipe.prep_time + recipe.cook_time} min</span>
                     <span>🍽️ {recipe.servings} servings</span>

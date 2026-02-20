@@ -1,4 +1,4 @@
-import pool from '../config/database.js';
+import pool from "../config/database.js";
 
 // Create a new recipe
 export async function createRecipe(recipeData) {
@@ -12,12 +12,12 @@ export async function createRecipe(recipeData) {
     cookTime,
     servings,
     difficulty,
-    nutritional_needs
+    nutritional_needs,
   } = recipeData;
 
   const query = `
     INSERT INTO recipes (
-      title, description, ingredients, instructions, 
+      title, description, ingredients, instructions,
       nutritional_info, prep_time, cook_time, servings, difficulty, nutritional_needs
     )
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -35,7 +35,7 @@ export async function createRecipe(recipeData) {
     servings,
     difficulty,
     // JSON.stringify(tags)
-    nutritional_needs
+    nutritional_needs,
   ]);
 
   return result.rows[0];
@@ -67,14 +67,14 @@ export async function getRecipeById(recipeId) {
 
 // Search recipes by nutritional content
 export async function getRecipesByNutrients(nutrients) {
-
-  const nutrientConditions = Object.entries(nutrients)
-    .map(([nutrient, _]) => `%${nutrient}%`); // ADD % wildcards here!
+  const nutrientConditions = Object.entries(nutrients).map(
+    ([nutrient, _]) => `%${nutrient}%`,
+  ); // ADD % wildcards here!
 
   if (nutrientConditions.length === 0) {
     return [];
   }
-  console.log("nutrientConditions in like", nutrientConditions)
+  console.log("nutrientConditions in like", nutrientConditions);
   // Get recipes that contain any of the required nutrients
   const query = `
     SELECT * FROM recipes
@@ -84,10 +84,9 @@ export async function getRecipesByNutrients(nutrients) {
   `;
 
   const result = await pool.query(query, [nutrientConditions]);
-  console.log(result)
+  console.log(result);
   return result.rows;
 }
-
 
 // Get all recipes (with pagination)
 export async function getAllRecipes(limit = 20, offset = 0) {
@@ -185,7 +184,7 @@ export async function logRecommendation(userId, recipeId, matchedConditions) {
 // Get user's recommendation history
 export async function getUserRecommendations(userId, limit = 20) {
   const query = `
-    SELECT 
+    SELECT
       rr.*,
       r.title as recipe_title,
       r.description as recipe_description

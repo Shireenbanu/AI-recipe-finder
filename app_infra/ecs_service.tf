@@ -34,8 +34,8 @@ resource "aws_ecs_task_definition" "app" {
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_role.arn
   container_definitions = jsonencode([{
-    name  = var.project_name
-    image = "${aws_ecr_repository.app.repository_url}:latest"
+    name       = var.project_name
+    image      = "${aws_ecr_repository.app.repository_url}:latest"
     privileged = false
     user       = "appuser"
 
@@ -86,10 +86,10 @@ resource "aws_ecs_task_definition" "app" {
 
       readonlyRootFilesystem = true
 
-    capabilities = { drop = ["ALL"] }
-      
+      capabilities = { drop = ["ALL"] }
+
     }
-   
+
 
 
     tags = {

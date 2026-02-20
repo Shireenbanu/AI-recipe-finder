@@ -1,10 +1,10 @@
 provider "aws" {
-  region = "us-west-2" 
+  region = "us-west-2"
 }
 
 resource "aws_s3_bucket" "terraform_state" {
   bucket = "ci-cd-terraform-state-2026" # MUST be globally unique
-  
+
   # Prevent accidental deletion of this bucket
   lifecycle {
     prevent_destroy = true

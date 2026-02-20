@@ -13,8 +13,8 @@ variable "environment" {
   default = "prod"
 }
 
-variable "domain_name"{
-  type = string
+variable "domain_name" {
+  type    = string
   default = "shireenlabs.me"
 }
 
@@ -32,4 +32,3 @@ variable "app_port" {
   type    = number
   default = 8080
 }
-

@@ -1,10 +1,10 @@
-import pg from 'pg';
-import dotenv from 'dotenv';
+import pg from "pg";
+import dotenv from "dotenv";
 
 dotenv.config();
 
 const { Pool } = pg;
-console.log( process.env.DB_HOST)
+console.log(process.env.DB_HOST);
 // PostgreSQL connection pool
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -16,18 +16,18 @@ const pool = new Pool({
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
   ssl: {
-    rejectUnauthorized: false // This allows the connection without a local .pem file
-  }
+    rejectUnauthorized: false, // This allows the connection without a local .pem file
+  },
   // ssl: false
 });
 
 // Test the connection
-pool.on('connect', () => {
-  console.log('✅ Connected to PostgreSQL database');
+pool.on("connect", () => {
+  console.log("✅ Connected to PostgreSQL database");
 });
 
-pool.on('error', (err) => {
-  console.error('❌ Unexpected error on idle PostgreSQL client', err);
+pool.on("error", (err) => {
+  console.error("❌ Unexpected error on idle PostgreSQL client", err);
   process.exit(-1);
 });
 
@@ -37,10 +37,10 @@ export const query = async (text, params) => {
   try {
     const res = await pool.query(text, params);
     const duration = Date.now() - start;
-    console.log('Executed query', { text, duration, rows: res.rowCount });
+    console.log("Executed query", { text, duration, rows: res.rowCount });
     return res;
   } catch (error) {
-    console.error('Database query error:', error);
+    console.error("Database query error:", error);
     throw error;
   }
 };
@@ -53,7 +53,7 @@ export const getClient = async () => {
 
   // Set a timeout of 5 seconds, after which we will log this client's last query
   const timeout = setTimeout(() => {
-    console.error('A client has been checked out for more than 5 seconds!');
+    console.error("A client has been checked out for more than 5 seconds!");
   }, 5000);
 
   client.query = (...args) => {
@@ -78,8 +78,8 @@ export const getClient = async () => {
 //   process.exit(0);
 // });
 
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
+pool.on("error", (err) => {
+  console.error("Unexpected error on idle client", err);
 });
 
 export default pool;

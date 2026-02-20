@@ -136,7 +136,7 @@ resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
           "secretsmanager:GetSecretValue"
         ]
         Resource = [aws_db_instance.recipe_db.master_user_secret[0].secret_arn,
-        aws_secretsmanager_secret.gemini_key.arn
+          aws_secretsmanager_secret.gemini_key.arn
         ]
       },
       {
@@ -158,7 +158,7 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
 
 
 resource "aws_kms_key" "dnssec" {
-  provider = aws.us_east_1
+  provider                 = aws.us_east_1
   customer_master_key_spec = "ECC_NIST_P256"
   key_usage                = "SIGN_VERIFY"
   description              = "KMS Key for Route 53 DNSSEC"
@@ -167,18 +167,18 @@ resource "aws_kms_key" "dnssec" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "EnableRootAccess"
-        Effect = "Allow"
+        Sid       = "EnableRootAccess"
+        Effect    = "Allow"
         Principal = { AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root" }
-        Action   = "kms:*"
-        Resource = "*"
+        Action    = "kms:*"
+        Resource  = "*"
       },
       {
-        Sid    = "AllowRoute53DNSSEC"
-        Effect = "Allow"
+        Sid       = "AllowRoute53DNSSEC"
+        Effect    = "Allow"
         Principal = { Service = "dnssec-route53.amazonaws.com" }
-        Action   = ["kms:DescribeKey", "kms:GetPublicKey", "kms:Sign"]
-        Resource = "*"
+        Action    = ["kms:DescribeKey", "kms:GetPublicKey", "kms:Sign"]
+        Resource  = "*"
       }
     ]
   })

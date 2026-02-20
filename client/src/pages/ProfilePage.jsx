@@ -1,18 +1,18 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { authFetch } from '../../services/apiClient.js';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { authFetch } from "../../services/apiClient.js";
 
 function ProfilePage() {
   const navigate = useNavigate();
-  const userId = localStorage.getItem('userId');
+  const userId = localStorage.getItem("userId");
   const [profile, setProfile] = useState(null);
   const [editing, setEditing] = useState(false);
-  const [formData, setFormData] = useState({ name: '', email: '' });
+  const [formData, setFormData] = useState({ name: "", email: "" });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!userId) {
-      navigate('/signin');
+      navigate("/signin");
       return;
     }
     fetchProfile();
@@ -22,16 +22,16 @@ function ProfilePage() {
     try {
       const response = await authFetch(`/api/users/${userId}`);
       const data = await response.json();
-      
+
       if (data.success) {
         setProfile(data.user);
         setFormData({
           name: data.user.name,
-          email: data.user.email
+          email: data.user.email,
         });
       }
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error("Error fetching profile:", error);
     } finally {
       setLoading(false);
     }
@@ -39,24 +39,24 @@ function ProfilePage() {
 
   const handleUpdate = async (e) => {
     e.preventDefault();
-    
+
     try {
       const response = await authFetch(`/api/users/${userId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         setProfile(data.user);
-        localStorage.setItem('userName', data.user.name);
+        localStorage.setItem("userName", data.user.name);
         setEditing(false);
-        alert('Profile updated!');
+        alert("Profile updated!");
       }
     } catch (error) {
-      alert('Failed to update profile');
+      alert("Failed to update profile");
     }
   };
 
@@ -68,7 +68,7 @@ function ProfilePage() {
       <div className="bg-white shadow-md">
         <div className="max-w-4xl mx-auto px-8 py-4 flex items-center gap-4">
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate("/dashboard")}
             className="text-blue-600 hover:text-blue-700"
           >
             ← Back to Dashboard
@@ -90,12 +90,16 @@ function ProfilePage() {
               </div>
 
               <div className="mb-6">
-                <label className="block text-gray-600 text-sm mb-1">Email</label>
+                <label className="block text-gray-600 text-sm mb-1">
+                  Email
+                </label>
                 <p className="text-xl">{profile?.email}</p>
               </div>
 
               <div className="mb-6">
-                <label className="block text-gray-600 text-sm mb-1">Member Since</label>
+                <label className="block text-gray-600 text-sm mb-1">
+                  Member Since
+                </label>
                 <p className="text-gray-700">
                   {new Date(profile?.created_at).toLocaleDateString()}
                 </p>
@@ -118,7 +122,9 @@ function ProfilePage() {
                   required
                   className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                 />
               </div>
 
@@ -129,7 +135,9 @@ function ProfilePage() {
                   required
                   className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
                 />
               </div>
 
@@ -146,7 +154,7 @@ function ProfilePage() {
                     setEditing(false);
                     setFormData({
                       name: profile.name,
-                      email: profile.email
+                      email: profile.email,
                     });
                   }}
                   className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300"

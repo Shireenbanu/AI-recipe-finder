@@ -1,15 +1,15 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { getCurrentUser } from 'aws-amplify/auth';
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { getCurrentUser } from "aws-amplify/auth";
 
-import SignInPage from './pages/SignInPage';
-import SignupPage from './pages/SignupPage';
-import DashboardPage from './pages/DashboardPage';
-import ProfilePage from './pages/ProfilePage';
-import MedicalHistoryPage from './pages/MedicalHistoryPage';
-import MedicalConditionsPage from './pages/MedicalConditionsPage';
-import RecipesPage from './pages/RecipesPage';
-import RecipeDetailPage from './pages/RecipeDetailPage';
+import SignInPage from "./pages/SignInPage";
+import SignupPage from "./pages/SignupPage";
+import DashboardPage from "./pages/DashboardPage";
+import ProfilePage from "./pages/ProfilePage";
+import MedicalHistoryPage from "./pages/MedicalHistoryPage";
+import MedicalConditionsPage from "./pages/MedicalConditionsPage";
+import RecipesPage from "./pages/RecipesPage";
+import RecipeDetailPage from "./pages/RecipeDetailPage";
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -23,7 +23,7 @@ function App() {
     try {
       await getCurrentUser();
       // User is authenticated with Cognito
-      const userId = localStorage.getItem('userId');
+      const userId = localStorage.getItem("userId");
       if (userId) {
         setIsAuthenticated(true);
       }
@@ -47,7 +47,16 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Navigate to="/signin" />} />
+        <Route
+          path="/"
+          element={
+            isAuthenticated ? (
+              <Navigate to="/dashboard" />
+            ) : (
+              <Navigate to="/signin" />
+            )
+          }
+        />
         <Route path="/signin" element={<SignInPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />

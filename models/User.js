@@ -1,4 +1,4 @@
-import pool from '../config/database.js';
+import pool from "../config/database.js";
 
 // Create a new user
 export async function createUser(email, name) {
@@ -7,7 +7,7 @@ export async function createUser(email, name) {
     VALUES ($1, $2)
     RETURNING *
   `;
-  
+
   const result = await pool.query(query, [email, name]);
   return result.rows[0];
 }
@@ -18,7 +18,7 @@ export async function getUserById(userId) {
     SELECT * FROM users
     WHERE id = $1
   `;
-  
+
   const result = await pool.query(query, [userId]);
   return result.rows[0];
 }
@@ -29,7 +29,7 @@ export async function getUserByEmail(email) {
     SELECT * FROM users
     WHERE email = $1
   `;
-  
+
   const result = await pool.query(query, [email]);
   return result.rows[0];
 }
@@ -37,10 +37,7 @@ export async function getUserByEmail(email) {
 // Get user by email
 export async function getUserLabReports(userId) {
   // console.log("userId", userId)
-  const query = 
-    'SELECT lab_reports FROM users WHERE id = $1'
-  ;
-  
+  const query = "SELECT lab_reports FROM users WHERE id = $1";
   const result = await pool.query(query, [userId]);
   // console.log("query pool ", result.rows[0].lab_reports)
   return result.rows[0].lab_reports;
@@ -57,7 +54,7 @@ export async function updateUser(userId, updates) {
     WHERE id = $3
     RETURNING *
   `;
-  
+
   const result = await pool.query(query, [name, email, userId]);
   return result.rows[0];
 }
@@ -65,19 +62,18 @@ export async function updateUser(userId, updates) {
 // Update user profile lab file name
 export async function saveFileNameForFutureUse(fileUrl, userId) {
   // reportData should be an object like { fileName: '...', url: '...' }
-  
-  const query = `  
-    UPDATE users 
-    SET lab_reports = COALESCE(lab_reports, '[]'::jsonb) || $1::jsonb 
+
+  const query = `
+    UPDATE users
+    SET lab_reports = COALESCE(lab_reports, '[]'::jsonb) || $1::jsonb
     WHERE id = $2
     RETURNING *
   `;
-  
-    // We wrap reportData in an array [ ] before stringifying 
-    // This tells Postgres to APPEND to the existing array
-    const result = await pool.query(query, [JSON.stringify([fileUrl]), userId]);
-    return result.rows[0];
-  
+
+  // We wrap reportData in an array [ ] before stringifying
+  // This tells Postgres to APPEND to the existing array
+  const result = await pool.query(query, [JSON.stringify([fileUrl]), userId]);
+  return result.rows[0];
 }
 
 // Delete user
@@ -87,20 +83,30 @@ export async function deleteUser(userId) {
     WHERE id = $1
     RETURNING *
   `;
-  
+
   const result = await pool.query(query, [userId]);
   return result.rows[0];
 }
 
 // Add medical condition to user
-export async function addUserMedicalCondition(userId, conditionId, severity, notes) {
+export async function addUserMedicalCondition(
+  userId,
+  conditionId,
+  severity,
+  notes,
+) {
   const query = `
     INSERT INTO user_medical_conditions (user_id, medical_condition_id, severity, notes, diagnosed_at)
     VALUES ($1, $2, $3, $4, CURRENT_DATE)
     RETURNING *
   `;
-  
-  const result = await pool.query(query, [userId, conditionId, severity, notes]);
+
+  const result = await pool.query(query, [
+    userId,
+    conditionId,
+    severity,
+    notes,
+  ]);
   return result.rows[0];
 }
 
@@ -110,16 +116,15 @@ export async function removeUserMedicalCondition(userId, conditionId) {
     WHERE user_id = $1 AND medical_condition_id = $2
     RETURNING *
   `;
-  
+
   const result = await pool.query(query, [userId, conditionId]);
   return result.rows[0];
 }
 
-
 // Get user's medical conditions with details
 export async function getUserMedicalConditions(userId) {
   const query = `
-    SELECT 
+    SELECT
       umc.id,
       umc.severity,
       umc.diagnosed_at,
@@ -133,7 +138,7 @@ export async function getUserMedicalConditions(userId) {
     WHERE umc.user_id = $1
     ORDER BY umc.created_at DESC
   `;
-  
+
   const result = await pool.query(query, [userId]);
   return result.rows;
 }
@@ -143,31 +148,30 @@ export async function getUserMedicalConditions(userId) {
 // Get aggregated nutritional requirements for a user
 export async function getUserNutritionalNeeds(userId) {
   const conditions = await getUserMedicalConditions(userId);
-  
+
   // Merge all recommended nutrients from user's conditions
   const aggregatedNeeds = {};
-  
-  conditions.forEach(condition => {
+
+  conditions.forEach((condition) => {
     const nutrients = condition.recommended_nutrients || {};
     Object.entries(nutrients).forEach(([nutrient, level]) => {
       // Priority: high > medium > low
       const priorities = { high: 3, medium: 2, low: 1 };
       const currentPriority = priorities[aggregatedNeeds[nutrient]] || 0;
       const newPriority = priorities[level] || 0;
-      
+
       if (newPriority > currentPriority) {
         aggregatedNeeds[nutrient] = level;
       }
-      
     });
   });
-  
+
   return {
-    conditions: conditions.map(c => ({
+    conditions: conditions.map((c) => ({
       name: c.condition_name,
-      severity: c.severity, 
-      conditionId: c.condition_id
+      severity: c.severity,
+      conditionId: c.condition_id,
     })),
-    nutritionalNeeds: aggregatedNeeds
+    nutritionalNeeds: aggregatedNeeds,
   };
 }

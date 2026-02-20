@@ -68,5 +68,6 @@ RUN rm -rf /var/cache/apk/* /root/.npm
 
 USER appuser
 EXPOSE 8080
-
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:3000 || exit 1
 CMD ["supervisord", "-c", "/etc/supervisord.conf"]
