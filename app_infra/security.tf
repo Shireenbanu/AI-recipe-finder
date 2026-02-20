@@ -31,7 +31,7 @@ resource "aws_security_group" "db" {
 
 # ALB Ingress (Allow Web Traffic)
 resource "aws_security_group_rule" "alb_ingress_http" {
-  # checkov:skip=CKV_AWS_260:Port 80 is required for the ALB to perform HTTP-to-HTTPS redirection.
+  #checkov:skip=CKV_AWS_260:Port 80 is required for the ALB to perform HTTP-to-HTTPS redirection.
   type              = "ingress"
   description       = "alb ingress http"
   from_port         = 80
@@ -86,7 +86,7 @@ resource "aws_security_group_rule" "db_ingress_from_ecs" {
 
 # Egress (Allow all outbound for ECS so it can pull images/updates)
 resource "aws_security_group_rule" "ecs_egress_all" {
-  # checkov:skip=CKV_AWS_382:Full egress required for app to communicate with dynamic 3rd party endpoints and legacy internal services.
+  #checkov:skip=CKV_AWS_382:Full egress required for app to communicate with dynamic 3rd party endpoints and legacy internal services.
   type              = "egress"
   description       = "From ECS TO internet"
   from_port         = 0

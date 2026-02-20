@@ -1,6 +1,6 @@
 resource "aws_lb" "main" {
-  # checkov:skip=CKV_AWS_192:Application is Node.js/React; no Java/Log4j dependency.
-  # checkov:skip=CKV2_AWS_76:ALB does not require WAF Log4j protection for non-Java app.  name               = "${var.project_name}-${var.environment}-alb"
+  #checkov:skip=CKV_AWS_192:Application is Node.js/React; no Java/Log4j dependency.
+  #checkov:skip=CKV2_AWS_76:ALB does not require WAF Log4j protection for non-Java app.  name               = "${var.project_name}-${var.environment}-alb"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
@@ -83,10 +83,10 @@ resource "aws_lb_listener" "https" {
 }
 
 resource "aws_s3_bucket" "alb_logs" {
-  # checkov:skip=CKV_AWS_145:ALB access logs do not support SSE-KMS; they require SSE-S3 (AES256) for delivery.
-  # checkov:skip=CKV_AWS_144:Cross-region replication not required for diagnostic logs.
-  # checkov:skip=CKV2_AWS_62:Event notifications too noisy for high-traffic ALB logs.
-  # checkov:skip=CKV_AWS_18:This is the logging bucket; self-logging not required.
+  #checkov:skip=CKV_AWS_145:ALB access logs do not support SSE-KMS; they require SSE-S3 (AES256) for delivery.
+  #checkov:skip=CKV_AWS_144:Cross-region replication not required for diagnostic logs.
+  #checkov:skip=CKV2_AWS_62:Event notifications too noisy for high-traffic ALB logs.
+  #checkov:skip=CKV_AWS_18:This is the logging bucket; self-logging not required.
   bucket        = "${var.project_name}-${var.environment}-alb-logs"
   force_destroy = true
 }
