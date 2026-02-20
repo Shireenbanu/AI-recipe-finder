@@ -6,6 +6,7 @@
 # ----------------------------------------
 
 resource "aws_route53_zone" "main" {
+  #checkov:skip=CKV2_AWS_39:DNS query logging not required for this environment.
   name = var.domain_name
 
   tags = {
