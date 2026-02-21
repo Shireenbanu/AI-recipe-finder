@@ -38,14 +38,6 @@
 | TA06     | Lateral Mover                  | Pivots through AWS resources using stolen credentials or weak IAM.         | IAM Role      |
 | TA07     | Malicious Patient/User         | Uploads a malicious file disguised as a lab report to trigger RCE.         | Standard User |
 
-Git Leaks:
-
-<img width="1234" height="640" alt="Screenshot 2026-02-12 at 4 08 40 PM" src="https://github.com/user-attachments/assets/b847b8b2-92c0-4508-bf6e-75a704a25c9e" />
-
-<img width="660" height="182" alt="image" src="https://github.com/user-attachments/assets/1a8160ea-a6cd-44f6-848b-2624d4e1d577" />
-<<<<<<< Updated upstream
-
-
 
 Threat Model for Container Hardening: 
 Please checkout the link for detailed explanation.
@@ -61,5 +53,4 @@ Please checkout the link for detailed explanation.
 | **L5** | **Immutable Filesystem** | Writable runtime layers allow attackers to modify the OS environment. | **Malware Persistence:** Attackers download web shells or scripts that survive as long as the container runs. | **The "DVD" Model:** Enable `readonlyRootFilesystem` and use `tmpfs` mounts with `noexec` to kill execution. |
 | **L6** | **Kernel Capabilities** | Granular kernel permissions (Capabilities) active by default. | **Privilege Jumping:** Attackers use `NET_RAW` or `DAC_OVERRIDE` to sniff traffic or bypass file security. | **The Blackout:** Use `drop = ["ALL"]` to zero out `CapEff` and `CapBnd`, stripping all kernel-level privileges. |
 | **L7** | **Image Signing** | Unverified images pulled from an untrusted or compromised registry. | **Supply Chain Attack:** An attacker swaps a legitimate image with a "poisoned" version containing a backdoor. | **Notation (CNCF):** Cryptographically sign images in CI/CD and verify signatures before every deployment. |
-=======
->>>>>>> Stashed changes
+
