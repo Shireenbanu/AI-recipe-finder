@@ -1,13 +1,22 @@
 # Secure CI/CD: AI Recipe Finder (DevSecOps Pipeline)
 
 ![alt text](Devsecops.drawio.svg)
+
 This project demonstrates an end-to-end DevSecOps pipeline built in Jenkins, applying a Security-First philosophy at every stage of the software delivery lifecycle. Rather than treating security as a post-deployment concern, each phase enforces hardened standards before code can progress — ensuring that every container image deployed to AWS ECS has been statically analyzed, vulnerability-scanned, and cryptographically signed.
 
-## Phase 1: Local Development (The Inner Loop)
-ESLint catches code quality issues and common security anti-patterns (unsafe eval(), insecure regex) before anything is committed.
-Pre-commit hooks handle the basics — trailing whitespace, formatting, and linting — so bad code never reaches the remote repository in the first place.
 
-## Phase 2:Gitleaks (Secret Scanning)
+
+## Phase 1 — Local Development
+
+**ESLint** catches code quality issues and common security anti-patterns (unsafe `eval()`, insecure regex) before anything is committed.
+
+**Pre-commit hooks** handle the basics — trailing whitespace, formatting, and linting — so bad code never reaches the remote repository in the first place.
+
+## Phase 2 — Semgrep (SAST)
+
+Scans the full codebase in the pipeline for security vulnerabilities — SQL injection, XSS, insecure deserialization, hardcoded secrets — mapped directly to OWASP Top 10 and CVE rules. Runs deeper than ESLint; catches actual exploitable patterns, not just code style issues.
+
+## Phase 3:Gitleaks (Secret Scanning)
 Scans the entire Git history for accidentally committed credentials: AWS keys, API tokens, private secrets.
 When I first ran this, it caught two things:
 
@@ -33,7 +42,7 @@ regexes = [
 
 ```
 
-## Phase 3: Checkov (IaC Scannning)
+## Phase 4: Checkov (IaC Scannning)
 Scans Terraform and CloudFormation templates for misconfigured cloud resources — unencrypted S3 buckets, overly permissive IAM policies, publicly exposed databases, etc
 
 First run: 56 failed checks. Took about three days to work through them all. The final run passes 345 tests (200 Terraform, 145 Docker) with 14 intentionally skipped and documented.
@@ -51,22 +60,22 @@ Some of the more interesting fixes:
 <img width="2012" height="534" alt="image" src="https://github.com/user-attachments/assets/a6362a3d-1209-45db-95e0-e0222799646a" />
 
 
-## Phase 4: Syft (SBOM Generation)
+## Phase 5: Syft (SBOM Generation)
 Generates a sbom.json in CycloneDX format — a full inventory of every dependency in the application, including version and license. This feeds directly into the next phase and gives you a point-in-time record of exactly what's in each build.
 
 <img width="1588" height="622" alt="image" src="https://github.com/user-attachments/assets/def30146-6d4a-479d-a903-baf19721643e" />
 
 
-## Phase 5: Grype (Dependency CVE Scan)
+## Phase 6: Grype (Dependency CVE Scan)
 Cross-references sbom.json against the National Vulnerability Database. Any Critical CVE breaks the pipeline immediately.
 `npm audit fix --force` works sometimes, but not always — it can introduce breaking changes. For a few packages I just swapped them out for alternatives that provide the same functionality without the CVEs.
 
 
-## Phase 6: Container Build + OS-Layer Scan
+## Phase 7,8: Container Build + OS-Layer Scan
 After the image is built, Grype runs a second scan against the entire container filesystem — including the base OS layers (Alpine/Ubuntu). This catches vulnerabilities in system packages that would never show up in package.json or the SBOM.
 Thankfully I did not find anything malicious.
 
-## Phase 7: Image Signing + Deploy to ECR
+## Phase 9,10: Image Signing + Deploy to ECR
 How it works:
 
 AWS Signer signing profile is created and referenced by Notation
@@ -74,7 +83,7 @@ Notation signs the image digest using the signing profile
 Both the image and its detached signature are pushed to ECR
 The signature can be verified before deployment to confirm the image hasn't been tampered with
 
-Deployment is handled by a Bash script in the Jenkins pipeline that calls the AWS CLI to update the ECS service.
+Deployment is handled by a groovy script in the Jenkins pipeline that calls the AWS CLI to update the ECS service.
 
 
 ### 🛠️ Tools at a Glance
