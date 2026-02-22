@@ -78,14 +78,18 @@ Deployment is handled by a Bash script in the Jenkins pipeline that calls the AW
 
 
 ### 🛠️ Tools at a Glance
-
 | Phase | Tool | What it does |
 | :--- | :--- | :--- |
-| **Local** | `ESLint` + `Pre-commit` | Code quality, early error prevention |
-| **Source** | `Gitleaks` | Credential and secret leak detection |
-| **Infra** | `Checkov` | IaC misconfiguration scanning |
-| **Dependencies** | `Syft` | SBOM generation (CycloneDX) |
-| **Dependencies** | `Grype` | CVE scan against NVD |
-| **Container** | `Grype` | OS-layer vulnerability scan |
-| **Registry** | `Notation` + `AWS Signer` | Cryptographic image signing |
-| **Deploy** | `Jenkins` + `AWS CLI` | Automated ECS service update |
+| **Local** | `ESLint` + `Pre-commit` | Blocks insecure code before it reaches the repo |
+| **SAST** | `Semgrep` | Scans full codebase for vulnerabilities mapped to OWASP Top 10 |
+| **Secret Scan** | `Gitleaks` | Detects committed secrets in Git history |
+| **IaC Scan** | `Checkov` | Enforces secure infrastructure before provisioning |
+| **SBOM** | `Syft` | Inventories every dependency and license in the build |
+| **CVE Scan** | `Grype` | Breaks the pipeline on any Critical CVE |
+| **Build** | `Docker` | Builds the container image from the verified codebase |
+| **Container Scan** | `Grype` | Catches OS-level CVEs in the base image |
+| **Signing** | `Notation` + `AWS Signer` | Signs and pushes image with detached signature to ECR |
+| **Registry** | `Amazon ECR` | Stores the signed image, rejects unverified artifacts |
+| **API Docs** | `Swagger` | Auto-generates API documentation as the DAST attack surface map |
+| **DAST** | `OWASP ZAP` | Scans live endpoints against OWASP Top 10 |
+| **Deploy** | `Jenkins` + `AWS CLI` | Triggers ECS service update on successful pipeline completion |
