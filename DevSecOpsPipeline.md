@@ -1,4 +1,6 @@
 # Secure CI/CD: AI Recipe Finder (DevSecOps Pipeline)
+
+![alt text](Devsecops.drawio.svg)
 This project demonstrates an end-to-end DevSecOps pipeline built in Jenkins, applying a Security-First philosophy at every stage of the software delivery lifecycle. Rather than treating security as a post-deployment concern, each phase enforces hardened standards before code can progress — ensuring that every container image deployed to AWS ECS has been statically analyzed, vulnerability-scanned, and cryptographically signed.
 
 ## Phase 1: Local Development (The Inner Loop)
